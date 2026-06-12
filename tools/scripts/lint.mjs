@@ -1,4 +1,4 @@
-import { listFiles, readJson, readText, runCheck } from "./lib/repo.mjs";
+import { findTextFiles, listFiles, readJson, readText, runCheck } from "./lib/repo.mjs";
 
 const workspacePackages = [
   "package.json",
@@ -49,5 +49,46 @@ runCheck("forbidden dependencies are absent", () => {
 runCheck("root quality files are present", () => {
   for (const requiredPath of ["AGENTS.md", "QUALITY_BAR.md", "quality-gates.yml", "pnpm-workspace.yaml"]) {
     readText(requiredPath);
+  }
+});
+
+runCheck("text files do not contain unresolved merge conflict markers", () => {
+  const markerPatterns = [
+    { label: "conflict start", pattern: new RegExp(`^${"<".repeat(7)}[^\r\n]*$`, "mu") },
+    { label: "conflict separator", pattern: new RegExp(`^${"=".repeat(7)}$`, "mu") },
+    { label: "conflict end", pattern: new RegExp(`^${">".repeat(7)}[^\r\n]*$`, "mu") }
+  ];
+
+  for (const path of findTextFiles()) {
+    const text = readText(path);
+
+    for (const { label, pattern } of markerPatterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        const line = text.slice(0, match.index).split(/\r?\n/u).length;
+        throw new Error(`${path}:${line} contains ${label}.`);
+      }
+    }
+  }
+});
+
+runCheck("pull request template exposes required review evidence sections", () => {
+  const template = readText(".github/PULL_REQUEST_TEMPLATE.md");
+  const requiredSections = [
+    "## 요약",
+    "## 완료한 작업",
+    "## 변경된 파일",
+    "## 추가/수정한 테스트",
+    "## 실행한 명령",
+    "## 결과",
+    "## 리스크 / 남은 우려",
+    "## 후속 작업",
+    "## 연결된 이슈"
+  ];
+
+  for (const section of requiredSections) {
+    if (!template.includes(section)) {
+      throw new Error(`PR template is missing required section: ${section}`);
+    }
   }
 });
