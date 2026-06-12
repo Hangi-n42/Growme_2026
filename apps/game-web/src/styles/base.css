@@ -1,0 +1,18 @@
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: #18211d;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  font-family: Arial, sans-serif;
+}
+
+#game {
+  width: min(100vw, 960px);
+  aspect-ratio: 16 / 9;
+}

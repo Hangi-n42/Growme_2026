@@ -1,0 +1,71 @@
+version: 1
+target: solo_npc_economy_slice
+
+protected_decisions:
+  browser_client: phaser
+  gameplay_authority: deterministic_typescript_sim_core
+  v0_1_mode: solo_only
+  runtime_llm_dialogue: forbidden
+  pixijs_dependency: forbidden
+  local_save_first: required
+
+scaffold_gates:
+  required_files: required
+  package_scripts: required
+  issue_template: required
+  ci_workflow: required
+  protected_file_check: required
+  no_test_skip_check: required
+  no_quality_threshold_lowering_check: required
+
+release_candidate_gates:
+  first_3_days_playable: required
+  min_npc_residents: 5
+  npc_distinct_schedules_jobs_preferences_requests_relationships: required
+  player_farm_craft_gather_action_trade_contract_relationship_decorate_save_reload: required
+  infinite_money_loop_count: 0
+  progression_deadlock_count: 0
+  content_validation: required
+  save_load_roundtrip: required
+  core_gameplay_placeholder_rectangles: 0
+  phaser_rule_duplication: forbidden
+  sim_core_phaser_dependency: forbidden
+  runtime_network_gameplay_dependency: forbidden
+
+economy_thresholds:
+  vendor_buy_multiplier_min: 0.35
+  vendor_buy_multiplier_max: 0.60
+  vendor_sell_multiplier_min: 1.00
+  vendor_sell_multiplier_max: 1.50
+  dynamic_price_multiplier_min: 0.65
+  dynamic_price_multiplier_max: 1.75
+  crafted_item_roi_default_min: 0.75
+  crafted_item_roi_default_max: 1.15
+  dominant_activity_efficiency_delta_max: 0.35
+  required_source_surplus_min: 0.10
+  required_source_surplus_target: 0.20
+
+performance_smoke_thresholds:
+  desktop_boot_to_first_playable_ms_max: 3000
+  save_load_roundtrip_ms_max: 250
+  average_frame_ms_max: 20
+  first_3_days_memory_mb_max: 512
+
+required_scripts:
+  - pnpm lint
+  - pnpm typecheck
+  - pnpm test:unit
+  - pnpm test:sim
+  - pnpm test:npc
+  - pnpm test:economy
+  - pnpm test:content
+  - pnpm test:save-load
+  - pnpm test:e2e
+  - pnpm test:first-3-days
+  - pnpm test:perf-smoke
+  - pnpm sim:7days
+  - pnpm sim:30days
+  - pnpm eval:quality
+  - pnpm check:protected-files
+  - pnpm check:no-test-skip
+  - pnpm check:no-quality-threshold-lowering

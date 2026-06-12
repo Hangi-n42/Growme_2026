@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/sim-core" },
+    { "path": "./packages/content-schema" },
+    { "path": "./tools/content-validator" },
+    { "path": "./tools/economy-sim" },
+    { "path": "./tools/npc-sim" },
+    { "path": "./tools/quality-eval" },
+    { "path": "./apps/game-web" }
+  ]
+}

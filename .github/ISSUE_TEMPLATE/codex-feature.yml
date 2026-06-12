@@ -1,0 +1,67 @@
+name: Codex Feature
+description: Scoped feature, system, content, or quality-gate work for autonomous Codex development.
+title: "[Feature]: "
+labels:
+  - codex
+  - feature
+body:
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Concrete behavior, data, tooling, or documentation that must exist when this issue is done.
+      placeholder: List specific requirements with IDs, commands, files, or user-visible outcomes.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-Goals
+      description: Explicitly state what must not be added or changed in this issue.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Observable checks that prove the requirements are complete.
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests
+      description: Exact local or CI commands and expected coverage.
+      placeholder: pnpm test:unit, pnpm test:sim, pnpm test:first-3-days, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: quality_gates
+    attributes:
+      label: Quality Gates
+      description: Relevant gates from QUALITY_BAR.md and quality-gates.yml.
+    validations:
+      required: true
+  - type: dropdown
+    id: suggested_agent
+    attributes:
+      label: Suggested Agent
+      options:
+        - autonomous-orchestrator
+        - game-director-gdd
+        - npc-narrative-designer
+        - npc-economy-designer
+        - action-systems-designer
+        - sim-core-implementer
+        - phaser-client-implementer
+        - content-pipeline-implementer
+        - save-persistence-implementer
+        - qa-automation
+        - balance-evaluator
+        - ux-playability-evaluator
+        - visual-polish-evaluator
+        - performance-evaluator
+        - quality-director
+        - release-manager
+    validations:
+      required: true
