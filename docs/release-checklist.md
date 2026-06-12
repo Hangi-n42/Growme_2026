@@ -17,7 +17,9 @@
 ## Gameplay Lock
 
 - [ ] Automated first-3-days test proves the solo core loop.
+- [ ] First-3-days proof covers farm, craft, action/gather, trade, contract, relationship, decoration, save, reload, and day progression.
 - [ ] At least 5 NPC residents have distinct schedules, jobs, preferences, requests, relationship hooks, memory flags, and story links.
+- [ ] v0.1 content target is met or exceeded: 3 shops, 8 to 12 items, 3 to 5 recipes, 10 to 12 requests or contracts, and 3 story events.
 - [ ] Player can farm, craft, gather/action, buy/sell, complete contracts, improve relationships, decorate, save, and reload.
 - [ ] Economy sim reports 0 infinite money loops.
 - [ ] Economy sim reports 0 progression deadlocks.
