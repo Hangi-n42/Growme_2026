@@ -1,89 +1,246 @@
-import type { Inventory, SimCommand, SimEvent, SimResult, SimState } from "./types";
+import { advanceGameTime, isPositiveIntegerMinute } from "./time";
+import type {
+  AuditEvent,
+  AuditEventType,
+  CommandFailure,
+  CommandFailureCode,
+  GameCommand,
+  GameCommandResult,
+  GameCommandType,
+  GameEvent,
+  GameEventCategory,
+  GameState,
+  GameTime,
+  JsonObject
+} from "./types";
 
-export function applyCommand(state: SimState, command: SimCommand): SimResult {
-  switch (command.type) {
-    case "advanceTime":
-      return advanceTime(state, command.minutes);
-    case "debugAddItem":
-      return debugAddItem(state, command.itemId, command.quantity);
-    case "saveSnapshot":
-      return succeed(state, {
-        type: "save.snapshotRequested",
-        message: "Save snapshot requested."
-      });
-    default:
-      return fail(state, "Unknown command.");
+type CommandRecord = {
+  readonly type: string;
+  readonly [key: string]: unknown;
+};
+
+export function applyCommand(state: GameState, command: unknown): GameCommandResult {
+  return reduceGameCommand(state, command);
+}
+
+export function reduceGameCommand(state: GameState, command: unknown): GameCommandResult {
+  if (!isCommandRecord(command)) {
+    return failCommand(state, command, {
+      code: "INVALID_COMMAND_SHAPE",
+      commandType: "UNKNOWN",
+      message: "Command must be an object with a string type.",
+      payload: {}
+    });
+  }
+
+  const commandType = canonicalCommandType(command.type);
+
+  if (commandType === undefined) {
+    return failCommand(state, command, {
+      code: "UNKNOWN_COMMAND",
+      commandType: "UNKNOWN",
+      message: `Unknown command type: ${command.type}`,
+      payload: { receivedType: command.type }
+    });
+  }
+
+  switch (commandType) {
+    case "NOOP":
+      return applyNoop(state, command);
+    case "ADVANCE_TIME":
+      return advanceTime(state, command);
   }
 }
 
-function advanceTime(state: SimState, minutes: number): SimResult {
-  if (!Number.isInteger(minutes) || minutes <= 0) {
-    return fail(state, "Advance time requires a positive integer minute count.");
-  }
-
-  const totalMinutes = state.minute + minutes;
-  const elapsedDays = Math.floor(totalMinutes / 1440);
-  const nextState: SimState = {
-    ...state,
-    day: state.day + elapsedDays,
-    minute: totalMinutes % 1440
-  };
-
-  return succeed(nextState, {
-    type: "time.advanced",
-    message: "Simulation time advanced.",
-    data: { minutes }
-  });
+function applyNoop(state: GameState, command: CommandRecord): GameCommandResult {
+  return succeedCommand(state, command as GameCommand, "NOOP", [
+    createGameEvent(
+      state,
+      state.time,
+      "NOOP",
+      "command.noop",
+      "command",
+      "No operation command applied.",
+      {}
+    )
+  ]);
 }
 
-function debugAddItem(state: SimState, itemId: string, quantity: number): SimResult {
-  if (itemId.length === 0 || !Number.isInteger(quantity) || quantity <= 0) {
-    return fail(state, "Debug add item requires an item id and positive integer quantity.");
+function advanceTime(state: GameState, command: CommandRecord): GameCommandResult {
+  if (!isPositiveIntegerMinute(command.minutes)) {
+    return failCommand(state, command, {
+      code: "INVALID_ADVANCE_TIME_MINUTES",
+      commandType: "ADVANCE_TIME",
+      message: "ADVANCE_TIME requires a positive integer minute count.",
+      payload: {}
+    });
   }
 
-  const inventory: Inventory = {
-    ...state.player.inventory,
-    [itemId]: (state.player.inventory[itemId] ?? 0) + quantity
-  };
+  const time = advanceGameTime(state.time, command.minutes);
+  const timedState = withGameTime(state, time);
 
-  const nextState: SimState = {
-    ...state,
-    player: {
-      ...state.player,
-      inventory
+  return succeedCommand(timedState, command as GameCommand, "ADVANCE_TIME", [
+    createGameEvent(
+      state,
+      time,
+      "ADVANCE_TIME",
+      "time.advanced",
+      "time",
+      "Simulation time advanced.",
+      { minutes: command.minutes }
+    )
+  ]);
+}
+
+function succeedCommand(
+  state: GameState,
+  command: GameCommand,
+  commandType: GameCommandType,
+  events: readonly GameEvent[]
+): GameCommandResult {
+  const audit = createAuditEvent(
+    state,
+    state.time,
+    "command.applied",
+    commandType,
+    "Command applied.",
+    {
+      commandSequence: state.commandLog.nextSequence,
+      eventCount: events.length
     }
-  };
-
-  return succeed(nextState, {
-    type: "inventory.debugAdded",
-    message: "Debug item added for scaffold smoke coverage.",
-    data: { itemId, quantity }
-  });
-}
-
-function succeed(state: SimState, event: SimEvent): SimResult {
-  const nextState: SimState = {
-    ...state,
-    eventLog: [...state.eventLog, event]
-  };
+  );
 
   return {
     ok: true,
-    state: nextState,
-    events: [event]
+    status: "success",
+    command,
+    state: {
+      ...state,
+      eventLog: [...state.eventLog, ...events],
+      auditLog: [...state.auditLog, audit],
+      commandLog: {
+        nextSequence: state.commandLog.nextSequence + 1,
+        appliedCount: state.commandLog.appliedCount + 1
+      }
+    },
+    events,
+    audit: [audit]
   };
 }
 
-function fail(state: SimState, error: string): SimResult {
-  const event: SimEvent = {
-    type: "command.failed",
-    message: error
-  };
+function failCommand(
+  state: GameState,
+  command: unknown,
+  failure: CommandFailure
+): GameCommandResult {
+  const event = createGameEvent(
+    state,
+    state.time,
+    failure.commandType,
+    "command.failed",
+    "command",
+    failure.message,
+    {
+      code: failure.code,
+      commandSequence: state.commandLog.nextSequence
+    }
+  );
+  const audit = createAuditEvent(
+    state,
+    state.time,
+    "command.rejected",
+    failure.commandType,
+    failure.message,
+    {
+      code: failure.code,
+      commandSequence: state.commandLog.nextSequence
+    }
+  );
 
   return {
     ok: false,
+    status: "failure",
+    command,
     state,
     events: [event],
-    error
+    audit: [audit],
+    failure,
+    error: failure.message
   };
+}
+
+function withGameTime(state: GameState, time: GameTime): GameState {
+  return {
+    ...state,
+    time,
+    day: time.day,
+    minute: time.minuteOfDay
+  };
+}
+
+function createGameEvent(
+  state: GameState,
+  time: GameTime,
+  commandType: GameCommandType | "UNKNOWN",
+  type: string,
+  category: GameEventCategory,
+  message: string,
+  payload: JsonObject
+): GameEvent {
+  const sequence = state.eventLog.length;
+
+  return {
+    id: `evt-${sequence.toString().padStart(6, "0")}`,
+    sequence,
+    kind: "game",
+    type,
+    category,
+    commandType,
+    message,
+    time,
+    payload
+  };
+}
+
+function createAuditEvent(
+  state: GameState,
+  time: GameTime,
+  type: AuditEventType,
+  commandType: GameCommandType | "UNKNOWN",
+  message: string,
+  payload: JsonObject
+): AuditEvent {
+  const sequence = state.auditLog.length;
+
+  return {
+    id: `audit-${sequence.toString().padStart(6, "0")}`,
+    sequence,
+    kind: "audit",
+    type,
+    commandType,
+    message,
+    time,
+    payload
+  };
+}
+
+function canonicalCommandType(type: string): GameCommandType | undefined {
+  if (type === "NOOP") {
+    return "NOOP";
+  }
+
+  if (type === "ADVANCE_TIME" || type === "advanceTime") {
+    return "ADVANCE_TIME";
+  }
+
+  return undefined;
+}
+
+function isCommandRecord(command: unknown): command is CommandRecord {
+  return (
+    typeof command === "object" &&
+    command !== null &&
+    "type" in command &&
+    typeof command.type === "string"
+  );
 }
