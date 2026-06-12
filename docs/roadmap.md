@@ -1,5 +1,17 @@
 # Roadmap
 
+## v0.1 Scope Lock
+
+v0.1 is the Solo NPC Economy Slice. It stays solo-only and proves the first three in-game days through this path:
+
+farm -> craft -> action/gather -> trade -> contract -> relationship -> decoration -> save -> reload -> day progression.
+
+The shared content target is 1 village/home area, 1 farm/home decoration area, 2 nearby action zones including a shallow mine, at least 5 NPC residents with a target of 6, 3 NPC shops, 8 to 12 items, 3 to 5 recipes, 10 to 12 requests or contracts, and 3 story events.
+
+Day-one implementation priorities are deterministic `sim-core`, content schema/validation, quality evaluator visibility, inventory and save/load foundations, farming/action commands, NPC economy content, and then Phaser UI coverage of the proven command path.
+
+Open product design questions should become separate blocked GitHub issues with an owner and dependency list. They should not be hidden inside release-candidate gates or resolved by weakening `QUALITY_BAR.md`, `quality-gates.yml`, or ADR constraints.
+
 ## Milestones
 
 ### M0: Autonomous Repository Foundation

@@ -1,5 +1,14 @@
 # Product Pillars
 
+## v0.1 Priority Order
+
+When scope or sequencing is unclear, v0.1 work should prioritize:
+
+1. Deterministic `packages/sim-core` commands, content validation, and save/load integrity.
+2. The first-three-days proof path: farm, craft, action/gather, trade, contract, relationship, decoration, save, reload, and day progression.
+3. NPC economy content that supports the proof path without exploits or progression deadlocks.
+4. Phaser presentation that renders sim-core state and dispatches commands without owning gameplay rules.
+
 ## Cozy Competence
 
 The player should feel capable, calm, and useful. Action exists to make effort satisfying, not punitive.

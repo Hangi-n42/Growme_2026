@@ -18,6 +18,8 @@ The Solo NPC Economy Slice must prove the first three in-game days are playable 
 - 10 to 12 requests or contracts.
 - 3 story events: arrival, first harvest, and blocked path restoration.
 
+These are the shared v0.1 release targets for roadmap planning, content validation, and the release checklist. A release candidate may exceed the target counts only when the extra content is validated, original, deterministic, and covered by the same quality gates.
+
 ## Core Loop
 
 1. Player wakes at home with restored energy.
@@ -27,6 +29,14 @@ The Solo NPC Economy Slice must prove the first three in-game days are playable 
 5. NPC/shop inventory, relationship flags, and village progress update.
 6. Player saves or sleeps.
 7. Day advances, crops grow, shops restock, zones reset, and schedules change.
+
+## First Three Days Proof
+
+The first-three-days automated path is the release proof for the v0.1 solo slice. It may use the shortest available valid content route, but it must exercise every core loop milestone:
+
+- Day 1: start from empty storage with a fixed seed, meet a resident, inspect a request or shop, farm, action/gather or mine, save, reload, and sleep.
+- Day 2: harvest or progress a crop, craft, trade, make contract progress, improve one relationship state, place or move decor, and sleep.
+- Day 3: complete at least one contract or request, confirm village or economy progress, save, reload, and verify no deadlock, blank screen, uncaught exception, failed asset load, or persistent console error.
 
 ## Command Surface
 
@@ -65,7 +75,7 @@ Commands validate preconditions before state changes and return structured event
 
 ## v0.1 Acceptance
 
-- Complete farm -> gather/action -> craft -> trade/request -> relationship -> decorate -> save/reload -> sleep loop.
+- Complete farm -> craft -> action/gather -> trade/request -> relationship -> decorate -> save/reload -> sleep loop.
 - First three in-game days pass automated browser tests.
 - Same seed plus command log replays exactly.
 - No command creates negative inventory, negative currency, item duplication, or unreachable progression.
