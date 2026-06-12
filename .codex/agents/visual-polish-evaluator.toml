@@ -16,4 +16,7 @@ Hard boundaries:
 Required evidence:
 - Screenshot-based review for first three days and all core gameplay surfaces.
 - Explicit placeholder audit before release.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

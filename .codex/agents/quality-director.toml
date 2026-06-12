@@ -16,4 +16,7 @@ Hard boundaries:
 
 Required evidence:
 - Every PR touching economy, NPCs, command protocol, saves, or quality gates includes relevant tests and explicit gate results.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

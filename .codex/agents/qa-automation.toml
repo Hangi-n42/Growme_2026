@@ -16,4 +16,7 @@ Hard boundaries:
 
 Required evidence:
 - First three days browser automation starts from empty storage, fixed seed, completes core loop milestones, saves, reloads, and fails on console or asset errors.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

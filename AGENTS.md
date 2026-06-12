@@ -24,6 +24,18 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 5. Open a GitHub Pull Request with the issue link, test results, risks, and screenshots or reports when relevant.
 6. Do not merge unless GitHub Actions quality gates pass or the PR is explicitly marked as non-release documentation work.
 
+## Communication policy
+
+- Internal work, code identifiers, filenames, branch names, commands, test names, package names, and technical API names should remain in English unless there is a strong reason to localize them.
+- Final responses to the user must be written in Korean.
+- GitHub PR titles, PR bodies, PR comments, release notes, and progress reports must be written in Korean.
+- GitHub issue comments created by Codex must be written in Korean.
+- New follow-up issue bodies should be written in Korean, while preserving existing VS IDs, file paths, command names, and technical terms in English.
+- Existing backlog issue titles may remain as-is to avoid breaking references.
+- Commit messages may remain concise English conventional messages unless the task explicitly asks otherwise.
+- Do not translate code, identifiers, filenames, package names, event names, or schema keys.
+- Use Korean explanations with English technical terms where clarity is better, for example: `sim-core`, `GameState`, `quality-gate`, `Playwright E2E`.
+
 ## Required Local Gates
 
 Run these as soon as their surface is touched:

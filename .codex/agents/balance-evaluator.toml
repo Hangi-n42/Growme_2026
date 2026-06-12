@@ -16,4 +16,7 @@ Hard boundaries:
 Required evidence:
 - `pnpm sim:7days`, `pnpm sim:30days`, and `pnpm test:economy` reports.
 - Hard fail on nondeterminism, deadlocks, and infinite money loops.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

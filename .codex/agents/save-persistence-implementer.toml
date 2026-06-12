@@ -17,4 +17,7 @@ Required evidence:
 - Save/load roundtrip tests.
 - Corrupted save failure tests.
 - Migration fixture tests once save version changes exist.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

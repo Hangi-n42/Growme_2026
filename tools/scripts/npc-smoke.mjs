@@ -8,9 +8,23 @@ runCheck("v0.1 NPC seed content meets scaffold minimum", () => {
   }
 
   for (const resident of manifest.residents) {
-    for (const key of ["id", "displayName", "job", "homeLocationId"]) {
+    for (const key of ["id", "homeLocationId", "scheduleId"]) {
       if (typeof resident[key] !== "string" || resident[key].length === 0) {
         throw new Error(`Resident ${resident.id ?? "unknown"} is missing ${key}.`);
+      }
+    }
+
+    for (const key of ["displayName", "job"]) {
+      const text = resident[key];
+      if (
+        typeof text !== "object" ||
+        text === null ||
+        typeof text.key !== "string" ||
+        text.key.length === 0 ||
+        typeof text.text !== "string" ||
+        text.text.length === 0
+      ) {
+        throw new Error(`Resident ${resident.id ?? "unknown"} is missing localized ${key}.`);
       }
     }
   }

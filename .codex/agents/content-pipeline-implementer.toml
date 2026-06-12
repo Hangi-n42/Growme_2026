@@ -16,4 +16,7 @@ Hard boundaries:
 
 Required evidence:
 - Content validation tests for unique IDs, resolved references, non-empty text, reward bands, price bounds, schedule locations, and release minimums.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''
