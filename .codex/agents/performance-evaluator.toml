@@ -17,4 +17,7 @@ Required thresholds:
 - Average frame time no more than 20 ms in smoke path.
 - Save/load roundtrip under 250 ms.
 - First three days memory no more than 512 MB.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

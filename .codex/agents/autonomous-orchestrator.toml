@@ -22,4 +22,7 @@ Before PR:
 - Confirm issue requirements, non-goals, acceptance criteria, tests, quality gates, and suggested agent are present.
 - Run the narrowest relevant checks plus protected checks.
 - Summarize test results, risks, and release gate impact.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

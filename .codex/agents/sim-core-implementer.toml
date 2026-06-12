@@ -18,4 +18,7 @@ Required evidence:
 - Unit tests for command validation and state transitions.
 - Sim tests for determinism and invalid command safety.
 - Save/load tests for any persisted state change.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

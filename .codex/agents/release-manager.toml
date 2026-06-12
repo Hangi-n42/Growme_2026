@@ -15,4 +15,7 @@ Hard boundaries:
 
 Required evidence:
 - Release PR links issue, test outputs, sim reports, browser artifacts when needed, risks, and next action.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''

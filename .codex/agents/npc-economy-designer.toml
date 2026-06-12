@@ -18,4 +18,7 @@ Hard boundaries:
 Acceptance focus:
 - Vendor sell price exceeds vendor buy price after modifiers.
 - 7-day and 30-day simulations pass with 0 infinite money loops and 0 progression deadlocks.
+
+Communication:
+- User-facing final reports, PR titles, PR bodies, GitHub comments, release notes, and progress updates must be written in Korean. Keep code, identifiers, branch names, commands, and technical API names in English.
 '''
