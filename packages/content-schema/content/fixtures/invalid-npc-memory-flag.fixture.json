@@ -1,0 +1,7 @@
+{
+  "description": "Resident memory flags must resolve to authored flags.",
+  "patches": [
+    { "op": "replace", "path": ["residents", 0, "memoryFlagIds", 0], "value": "missing_memory_flag" }
+  ],
+  "expectedErrors": ["resident nia_moss.memoryFlagIds references unknown id: missing_memory_flag"]
+}

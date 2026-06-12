@@ -37,6 +37,7 @@ const DIALOGUE_CATEGORIES = new Set([
 
 const SCHEDULE_DAY_TYPES = new Set(["weekday", "weekend", "rain", "story"]);
 const REQUIRED_SCHEDULE_DAY_TYPES = ["weekday", "weekend"] as const;
+const RESIDENT_STORY_ROLES = new Set(["primary", "supporting"]);
 const CONTRACT_OBJECTIVE_TYPES = new Set([
   "fetchItem",
   "deliverItem",
@@ -93,15 +94,27 @@ export interface RecipeContent extends ContentReference {
   readonly unlockFlagIds?: readonly string[];
 }
 
+export interface ResidentPreferenceProfileContent {
+  readonly likedTags: readonly string[];
+  readonly dislikedTags: readonly string[];
+  readonly giftItemIds: readonly string[];
+}
+
+export interface ResidentStoryParticipationContent {
+  readonly storyEventId: string;
+  readonly role: "primary" | "supporting";
+}
+
 export interface ResidentContent extends ContentReference {
   readonly job: LocalizedText;
   readonly homeLocationId: string;
   readonly scheduleId: string;
-  readonly preferenceTags: readonly string[];
+  readonly preferenceProfile: ResidentPreferenceProfileContent;
   readonly requestHookIds: readonly string[];
   readonly relationshipHookIds: readonly string[];
+  readonly memoryFlagIds: readonly string[];
   readonly shopIds: readonly string[];
-  readonly storyEventIds: readonly string[];
+  readonly storyParticipation: readonly ResidentStoryParticipationContent[];
 }
 
 export interface ScheduleEntryContent {
@@ -469,40 +482,187 @@ function validateResidents(
       `resident ${id}.scheduleId`,
       context
     );
-    readStringArray(resident, "preferenceTags", `resident ${id}.preferenceTags`, context, {
+    validateResidentPreferenceProfile(resident["preferenceProfile"], `resident ${id}.preferenceProfile`, collections, context);
+
+    const requestHookIds = readStringArray(resident, "requestHookIds", `resident ${id}.requestHookIds`, context, {
       allowMissing: false,
       allowEmpty: false
     });
-    validateReferences(
-      readStringArray(resident, "requestHookIds", `resident ${id}.requestHookIds`, context, {
+    validateResidentContractHooks(id, requestHookIds, collections, `resident ${id}.requestHookIds`, context);
+
+    const relationshipHookIds = readStringArray(
+      resident,
+      "relationshipHookIds",
+      `resident ${id}.relationshipHookIds`,
+      context,
+      {
         allowMissing: false,
         allowEmpty: false
-      }),
-      collections.contracts,
-      `resident ${id}.requestHookIds`,
-      context
+      }
     );
-    validateReferences(
-      readStringArray(resident, "relationshipHookIds", `resident ${id}.relationshipHookIds`, context, {
-        allowMissing: false,
-        allowEmpty: false
-      }),
-      collections.relationshipMilestones,
+    validateResidentRelationshipHooks(
+      id,
+      relationshipHookIds,
+      collections,
       `resident ${id}.relationshipHookIds`,
       context
     );
-    validateReferences(
-      readStringArray(resident, "shopIds", `resident ${id}.shopIds`, context),
-      collections.shops,
-      `resident ${id}.shopIds`,
+
+    const memoryFlagIds = readStringArray(resident, "memoryFlagIds", `resident ${id}.memoryFlagIds`, context, {
+      allowMissing: false,
+      allowEmpty: false
+    });
+    validateReferences(memoryFlagIds, collections.flags, `resident ${id}.memoryFlagIds`, context);
+
+    const shopIds = readStringArray(resident, "shopIds", `resident ${id}.shopIds`, context, { allowMissing: false });
+    validateResidentShopLinks(id, shopIds, collections, `resident ${id}.shopIds`, context);
+
+    validateResidentStoryParticipation(
+      id,
+      resident["storyParticipation"],
+      `resident ${id}.storyParticipation`,
+      collections,
       context
     );
-    validateReferences(
-      readStringArray(resident, "storyEventIds", `resident ${id}.storyEventIds`, context),
-      collections.storyEvents,
-      `resident ${id}.storyEventIds`,
-      context
-    );
+  }
+}
+
+function validateResidentPreferenceProfile(
+  value: unknown,
+  path: string,
+  collections: ManifestCollections,
+  context: ValidationContext
+): void {
+  if (!isRecord(value)) {
+    context.errors.push(`${path} must be an object.`);
+    return;
+  }
+
+  const likedTags = readStringArray(value, "likedTags", `${path}.likedTags`, context, {
+    allowMissing: false,
+    allowEmpty: false
+  });
+  const dislikedTags = readStringArray(value, "dislikedTags", `${path}.dislikedTags`, context, {
+    allowMissing: false,
+    allowEmpty: false
+  });
+  const giftItemIds = readStringArray(value, "giftItemIds", `${path}.giftItemIds`, context, {
+    allowMissing: false,
+    allowEmpty: false
+  });
+
+  validateUniqueStrings(likedTags, `${path}.likedTags`, context);
+  validateUniqueStrings(dislikedTags, `${path}.dislikedTags`, context);
+  validateUniqueStrings(giftItemIds, `${path}.giftItemIds`, context);
+  validateReferences(giftItemIds, collections.items, `${path}.giftItemIds`, context);
+
+  const likedTagSet = new Set(likedTags);
+  for (const tag of dislikedTags) {
+    if (likedTagSet.has(tag)) {
+      context.errors.push(`${path} cannot like and dislike tag: ${tag}.`);
+    }
+  }
+}
+
+function validateResidentContractHooks(
+  residentId: string,
+  contractIds: readonly string[],
+  collections: ManifestCollections,
+  path: string,
+  context: ValidationContext
+): void {
+  for (const contractId of contractIds) {
+    const contract = collections.contracts.get(contractId);
+    if (contract === undefined) {
+      context.errors.push(`${path} references unknown id: ${contractId}.`);
+      continue;
+    }
+
+    if (contract["requesterNpcId"] !== residentId) {
+      context.errors.push(`${path} references contract ${contractId} owned by ${String(contract["requesterNpcId"])}.`);
+    }
+  }
+}
+
+function validateResidentRelationshipHooks(
+  residentId: string,
+  milestoneIds: readonly string[],
+  collections: ManifestCollections,
+  path: string,
+  context: ValidationContext
+): void {
+  for (const milestoneId of milestoneIds) {
+    const milestone = collections.relationshipMilestones.get(milestoneId);
+    if (milestone === undefined) {
+      context.errors.push(`${path} references unknown id: ${milestoneId}.`);
+      continue;
+    }
+
+    if (milestone["npcId"] !== residentId) {
+      context.errors.push(`${path} references milestone ${milestoneId} owned by ${String(milestone["npcId"])}.`);
+    }
+  }
+}
+
+function validateResidentShopLinks(
+  residentId: string,
+  shopIds: readonly string[],
+  collections: ManifestCollections,
+  path: string,
+  context: ValidationContext
+): void {
+  for (const shopId of shopIds) {
+    const shop = collections.shops.get(shopId);
+    if (shop === undefined) {
+      context.errors.push(`${path} references unknown id: ${shopId}.`);
+      continue;
+    }
+
+    if (shop["ownerNpcId"] !== residentId) {
+      context.errors.push(`${path} references shop ${shopId} owned by ${String(shop["ownerNpcId"])}.`);
+    }
+  }
+}
+
+function validateResidentStoryParticipation(
+  residentId: string,
+  value: unknown,
+  path: string,
+  collections: ManifestCollections,
+  context: ValidationContext
+): void {
+  const participation = readArrayValue(value, path, context, { allowEmpty: false });
+  const storyEventIds = new Set<string>();
+
+  for (const [index, participationValue] of participation.entries()) {
+    const entryPath = `${path}[${index}]`;
+    if (!isRecord(participationValue)) {
+      context.errors.push(`${entryPath} must be an object.`);
+      continue;
+    }
+
+    const storyEventId = readString(participationValue, "storyEventId", `${entryPath}.storyEventId`, context);
+    validateEnum(participationValue["role"], RESIDENT_STORY_ROLES, `${entryPath}.role`, context);
+
+    if (storyEventId === undefined) {
+      continue;
+    }
+
+    const storyEvent = collections.storyEvents.get(storyEventId);
+    if (storyEvent === undefined) {
+      context.errors.push(`${entryPath}.storyEventId references unknown id: ${storyEventId}.`);
+      continue;
+    }
+
+    if (storyEventIds.has(storyEventId)) {
+      context.errors.push(`${path} contains duplicate story event: ${storyEventId}.`);
+    }
+    storyEventIds.add(storyEventId);
+
+    const participantNpcIds = storyEvent["participantNpcIds"];
+    if (Array.isArray(participantNpcIds) && !participantNpcIds.includes(residentId)) {
+      context.errors.push(`${entryPath}.storyEventId references story event ${storyEventId} without participant ${residentId}.`);
+    }
   }
 }
 
@@ -1068,6 +1228,19 @@ function validateReferences(
 ): void {
   for (const id of ids) {
     validateReference(id, validIds, path, context);
+  }
+}
+
+function validateUniqueStrings(values: readonly string[], path: string, context: ValidationContext): void {
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      context.errors.push(`${path} contains duplicate value: ${value}.`);
+      continue;
+    }
+
+    seen.add(value);
   }
 }
 

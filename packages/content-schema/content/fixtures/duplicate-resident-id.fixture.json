@@ -1,0 +1,7 @@
+{
+  "description": "Duplicate resident IDs are rejected.",
+  "patches": [
+    { "op": "replace", "path": ["residents", 1, "id"], "value": "nia_moss" }
+  ],
+  "expectedErrors": ["Duplicate resident id: nia_moss"]
+}
