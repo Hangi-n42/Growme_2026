@@ -1,21 +1,43 @@
-import type { SimState } from "./types";
+import { createSeedState } from "./rng";
+import { createGameTime } from "./time";
+import {
+  DEFAULT_CONTENT_VERSION,
+  DEFAULT_START_MINUTE,
+  GAME_STATE_VERSION,
+  type GameState
+} from "./types";
 
 export interface CreateInitialStateOptions {
   readonly seed: string;
+  readonly contentVersion?: string;
+  readonly startDay?: number;
+  readonly startMinute?: number;
 }
 
-export function createInitialState(options: CreateInitialStateOptions): SimState {
+export function createInitialGameState(options: CreateInitialStateOptions): GameState {
+  const time = createGameTime(options.startDay ?? 1, options.startMinute ?? DEFAULT_START_MINUTE);
+
   return {
-    version: 1,
+    version: GAME_STATE_VERSION,
+    contentVersion: options.contentVersion ?? DEFAULT_CONTENT_VERSION,
     seed: options.seed,
-    day: 1,
-    minute: 360,
+    rng: createSeedState(options.seed),
+    time,
+    day: time.day,
+    minute: time.minuteOfDay,
     player: {
       energy: 100,
       wallet: 100,
       inventory: {}
     },
     flags: [],
-    eventLog: []
+    eventLog: [],
+    auditLog: [],
+    commandLog: {
+      nextSequence: 0,
+      appliedCount: 0
+    }
   };
 }
+
+export const createInitialState = createInitialGameState;

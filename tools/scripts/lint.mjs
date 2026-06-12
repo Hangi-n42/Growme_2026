@@ -1,4 +1,4 @@
-import { readJson, readText, runCheck } from "./lib/repo.mjs";
+import { listFiles, readJson, readText, runCheck } from "./lib/repo.mjs";
 
 const workspacePackages = [
   "package.json",
@@ -18,13 +18,11 @@ runCheck("workspace package manifests are valid", () => {
 });
 
 runCheck("sim-core does not import browser presentation dependencies", () => {
-  for (const path of [
-    "packages/sim-core/src/types.ts",
-    "packages/sim-core/src/state.ts",
-    "packages/sim-core/src/commands.ts",
-    "packages/sim-core/src/save.ts",
-    "packages/sim-core/src/index.ts"
-  ]) {
+  const simCoreSources = listFiles().filter(
+    (file) => file.startsWith("packages/sim-core/src/") && file.endsWith(".ts")
+  );
+
+  for (const path of simCoreSources) {
     const text = readText(path).toLowerCase();
     if (text.includes("phaser") || text.includes("localstorage") || text.includes("document.")) {
       throw new Error(`${path} contains a browser or Phaser dependency.`);
