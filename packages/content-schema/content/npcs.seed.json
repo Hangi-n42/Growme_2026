@@ -1,59 +1,551 @@
 {
   "schemaVersion": 1,
+  "contentVersion": "v0.1-content-foundation",
+  "defaultLocale": "en",
+  "flags": [
+    { "id": "met_nia_moss", "description": { "key": "flag.met_nia_moss", "text": "Met Nia Moss" } },
+    { "id": "met_oren_clay", "description": { "key": "flag.met_oren_clay", "text": "Met Oren Clay" } },
+    { "id": "met_tavi_reed", "description": { "key": "flag.met_tavi_reed", "text": "Met Tavi Reed" } },
+    { "id": "met_mara_well", "description": { "key": "flag.met_mara_well", "text": "Met Mara Well" } },
+    { "id": "met_ilo_fen", "description": { "key": "flag.met_ilo_fen", "text": "Met Ilo Fen" } },
+    { "id": "met_sena_vale", "description": { "key": "flag.met_sena_vale", "text": "Met Sena Vale" } },
+    { "id": "rel_nia_20_seed_unlock", "description": { "key": "flag.rel_nia_20_seed_unlock", "text": "Nia shared a seed shelf perk" } },
+    { "id": "rel_oren_20_workshop_discount", "description": { "key": "flag.rel_oren_20_workshop_discount", "text": "Oren offered a workshop discount" } },
+    { "id": "rel_tavi_20_map_hint", "description": { "key": "flag.rel_tavi_20_map_hint", "text": "Tavi marked a useful route" } },
+    { "id": "rel_mara_20_meal_gift", "description": { "key": "flag.rel_mara_20_meal_gift", "text": "Mara prepared a meal gift" } },
+    { "id": "rel_ilo_20_forage_hint", "description": { "key": "flag.rel_ilo_20_forage_hint", "text": "Ilo shared a forage hint" } },
+    { "id": "rel_sena_20_archive_access", "description": { "key": "flag.rel_sena_20_archive_access", "text": "Sena opened the archive desk" } },
+    { "id": "contract_starter_crop_help_done", "description": { "key": "flag.contract_starter_crop_help_done", "text": "Completed starter crop help" } },
+    { "id": "contract_first_harvest_done", "description": { "key": "flag.contract_first_harvest_done", "text": "Completed first harvest" } },
+    { "id": "contract_tool_repair_intro_done", "description": { "key": "flag.contract_tool_repair_intro_done", "text": "Completed tool repair intro" } },
+    { "id": "contract_garden_path_repair_done", "description": { "key": "flag.contract_garden_path_repair_done", "text": "Completed garden path repair" } },
+    { "id": "contract_first_delivery_done", "description": { "key": "flag.contract_first_delivery_done", "text": "Completed first delivery" } },
+    { "id": "contract_market_note_done", "description": { "key": "flag.contract_market_note_done", "text": "Completed market note" } },
+    { "id": "contract_stew_supplies_done", "description": { "key": "flag.contract_stew_supplies_done", "text": "Completed stew supplies" } },
+    { "id": "contract_harvest_setup_done", "description": { "key": "flag.contract_harvest_setup_done", "text": "Completed harvest setup" } },
+    { "id": "contract_rain_sample_done", "description": { "key": "flag.contract_rain_sample_done", "text": "Completed rain sample" } },
+    { "id": "contract_meadow_notes_done", "description": { "key": "flag.contract_meadow_notes_done", "text": "Completed meadow notes" } },
+    { "id": "contract_old_marker_done", "description": { "key": "flag.contract_old_marker_done", "text": "Completed old marker" } },
+    { "id": "contract_garden_clue_done", "description": { "key": "flag.contract_garden_clue_done", "text": "Completed garden clue" } },
+    { "id": "story_arrival_seen", "description": { "key": "flag.story_arrival_seen", "text": "Arrival story seen" } },
+    { "id": "story_first_harvest_seen", "description": { "key": "flag.story_first_harvest_seen", "text": "First harvest story seen" } },
+    { "id": "story_path_restored", "description": { "key": "flag.story_path_restored", "text": "Blocked path restored" } },
+    { "id": "story_arrival_dialogue_seen", "description": { "key": "flag.story_arrival_dialogue_seen", "text": "Arrival dialogue seen" } },
+    { "id": "story_first_harvest_dialogue_seen", "description": { "key": "flag.story_first_harvest_dialogue_seen", "text": "First harvest dialogue seen" } },
+    { "id": "story_path_dialogue_seen", "description": { "key": "flag.story_path_dialogue_seen", "text": "Path restoration dialogue seen" } }
+  ],
+  "locations": [
+    { "id": "player_home", "displayName": { "key": "location.player_home", "text": "Player Cottage" }, "kind": "home" },
+    { "id": "player_farm", "displayName": { "key": "location.player_farm", "text": "Player Farm" }, "kind": "farm" },
+    { "id": "village_square", "displayName": { "key": "location.village_square", "text": "Village Square" }, "kind": "village" },
+    { "id": "nia_home", "displayName": { "key": "location.nia_home", "text": "Nia's Home" }, "kind": "home" },
+    { "id": "seed_shop", "displayName": { "key": "location.seed_shop", "text": "Moss Seed Stand" }, "kind": "shop" },
+    { "id": "oren_home", "displayName": { "key": "location.oren_home", "text": "Oren's Home" }, "kind": "home" },
+    { "id": "workshop", "displayName": { "key": "location.workshop", "text": "Clay Workshop" }, "kind": "shop" },
+    { "id": "tavi_home", "displayName": { "key": "location.tavi_home", "text": "Tavi's Home" }, "kind": "home" },
+    { "id": "general_goods", "displayName": { "key": "location.general_goods", "text": "Reed General Goods" }, "kind": "shop" },
+    { "id": "mara_home", "displayName": { "key": "location.mara_home", "text": "Mara's Home" }, "kind": "home" },
+    { "id": "community_kitchen", "displayName": { "key": "location.community_kitchen", "text": "Community Kitchen" }, "kind": "village" },
+    { "id": "ilo_home", "displayName": { "key": "location.ilo_home", "text": "Ilo's Home" }, "kind": "home" },
+    { "id": "meadow_edge", "displayName": { "key": "location.meadow_edge", "text": "Meadow Edge" }, "kind": "zone" },
+    { "id": "sena_home", "displayName": { "key": "location.sena_home", "text": "Sena's Home" }, "kind": "home" },
+    { "id": "archive", "displayName": { "key": "location.archive", "text": "Village Archive" }, "kind": "village" },
+    { "id": "shallow_mine", "displayName": { "key": "location.shallow_mine", "text": "Shallow Mine" }, "kind": "mine" },
+    { "id": "old_path", "displayName": { "key": "location.old_path", "text": "Old Garden Path" }, "kind": "village" }
+  ],
+  "items": [
+    {
+      "id": "turnip_seed",
+      "displayName": { "key": "item.turnip_seed", "text": "Turnip Seed" },
+      "category": "seed",
+      "basePrice": 8,
+      "rarity": "common",
+      "stackLimit": 99,
+      "vendor": { "buyable": true, "sellable": false },
+      "progressionCritical": true,
+      "fallbackSourceIds": ["nia_seed_stall"]
+    },
+    {
+      "id": "turnip_crop",
+      "displayName": { "key": "item.turnip_crop", "text": "Turnip" },
+      "category": "crop",
+      "basePrice": 20,
+      "rarity": "common",
+      "stackLimit": 99,
+      "vendor": { "buyable": false, "sellable": true }
+    },
+    {
+      "id": "wild_herbs",
+      "displayName": { "key": "item.wild_herbs", "text": "Wild Herbs" },
+      "category": "forage",
+      "basePrice": 12,
+      "rarity": "common",
+      "stackLimit": 99,
+      "vendor": { "buyable": false, "sellable": true }
+    },
+    {
+      "id": "wild_fiber",
+      "displayName": { "key": "item.wild_fiber", "text": "Wild Fiber" },
+      "category": "material",
+      "basePrice": 10,
+      "rarity": "common",
+      "stackLimit": 99,
+      "vendor": { "buyable": true, "sellable": true }
+    },
+    {
+      "id": "fieldstone",
+      "displayName": { "key": "item.fieldstone", "text": "Fieldstone" },
+      "category": "material",
+      "basePrice": 8,
+      "rarity": "common",
+      "stackLimit": 99,
+      "vendor": { "buyable": true, "sellable": true }
+    },
+    {
+      "id": "copper_ore",
+      "displayName": { "key": "item.copper_ore", "text": "Copper Ore" },
+      "category": "ore",
+      "basePrice": 35,
+      "rarity": "uncommon",
+      "stackLimit": 99,
+      "vendor": { "buyable": false, "sellable": true }
+    },
+    {
+      "id": "repair_plank",
+      "displayName": { "key": "item.repair_plank", "text": "Repair Plank" },
+      "category": "crafted",
+      "basePrice": 30,
+      "rarity": "common",
+      "stackLimit": 50,
+      "vendor": { "buyable": true, "sellable": true }
+    },
+    {
+      "id": "garden_path_kit",
+      "displayName": { "key": "item.garden_path_kit", "text": "Garden Path Kit" },
+      "category": "decor",
+      "basePrice": 50,
+      "rarity": "common",
+      "stackLimit": 20,
+      "vendor": { "buyable": true, "sellable": true }
+    },
+    {
+      "id": "simple_stool",
+      "displayName": { "key": "item.simple_stool", "text": "Simple Stool" },
+      "category": "decor",
+      "basePrice": 45,
+      "rarity": "common",
+      "stackLimit": 10,
+      "vendor": { "buyable": true, "sellable": true }
+    },
+    {
+      "id": "note_paper",
+      "displayName": { "key": "item.note_paper", "text": "Note Paper" },
+      "category": "material",
+      "basePrice": 6,
+      "rarity": "common",
+      "stackLimit": 99,
+      "vendor": { "buyable": true, "sellable": true }
+    },
+    {
+      "id": "stew_pot",
+      "displayName": { "key": "item.stew_pot", "text": "Stew Pot" },
+      "category": "decor",
+      "basePrice": 70,
+      "rarity": "uncommon",
+      "stackLimit": 5,
+      "vendor": { "buyable": true, "sellable": true }
+    }
+  ],
+  "recipes": [
+    {
+      "id": "repair_plank_recipe",
+      "displayName": { "key": "recipe.repair_plank_recipe", "text": "Repair Plank" },
+      "category": "utility",
+      "inputs": [
+        { "itemId": "fieldstone", "quantity": 2 },
+        { "itemId": "wild_fiber", "quantity": 1 }
+      ],
+      "outputs": [{ "itemId": "repair_plank", "quantity": 1 }],
+      "craftMinutes": 15
+    },
+    {
+      "id": "garden_path_kit_recipe",
+      "displayName": { "key": "recipe.garden_path_kit_recipe", "text": "Garden Path Kit" },
+      "category": "decor",
+      "inputs": [
+        { "itemId": "fieldstone", "quantity": 3 },
+        { "itemId": "wild_fiber", "quantity": 2 }
+      ],
+      "outputs": [{ "itemId": "garden_path_kit", "quantity": 1 }],
+      "craftMinutes": 30
+    },
+    {
+      "id": "simple_stool_recipe",
+      "displayName": { "key": "recipe.simple_stool_recipe", "text": "Simple Stool" },
+      "category": "decor",
+      "inputs": [
+        { "itemId": "repair_plank", "quantity": 1 },
+        { "itemId": "wild_fiber", "quantity": 2 }
+      ],
+      "outputs": [{ "itemId": "simple_stool", "quantity": 1 }],
+      "craftMinutes": 30
+    }
+  ],
   "residents": [
     {
       "id": "nia_moss",
-      "displayName": "Nia Moss",
-      "job": "Seed shop owner",
+      "displayName": { "key": "npc.nia_moss.name", "text": "Nia Moss" },
+      "job": { "key": "npc.nia_moss.job", "text": "Seed shop owner" },
       "homeLocationId": "nia_home",
+      "scheduleId": "nia_moss_schedule",
       "preferenceTags": ["fresh", "seed", "flower"],
       "requestHookIds": ["starter_crop_help", "first_harvest"],
-      "relationshipHookIds": ["seed_unlock", "plant_care_tip"]
+      "relationshipHookIds": ["nia_seed_unlock"],
+      "shopIds": ["nia_seed_stall"],
+      "storyEventIds": ["arrival"]
     },
     {
       "id": "oren_clay",
-      "displayName": "Oren Clay",
-      "job": "Workshop keeper",
+      "displayName": { "key": "npc.oren_clay.name", "text": "Oren Clay" },
+      "job": { "key": "npc.oren_clay.job", "text": "Workshop keeper" },
       "homeLocationId": "oren_home",
+      "scheduleId": "oren_clay_schedule",
       "preferenceTags": ["stone", "repair", "crafted"],
       "requestHookIds": ["tool_repair_intro", "garden_path_repair"],
-      "relationshipHookIds": ["workshop_discount", "repair_advice"]
+      "relationshipHookIds": ["oren_workshop_discount"],
+      "shopIds": ["oren_workshop"],
+      "storyEventIds": ["blocked_path_restoration"]
     },
     {
       "id": "tavi_reed",
-      "displayName": "Tavi Reed",
-      "job": "General goods clerk and courier",
+      "displayName": { "key": "npc.tavi_reed.name", "text": "Tavi Reed" },
+      "job": { "key": "npc.tavi_reed.job", "text": "General goods clerk and courier" },
       "homeLocationId": "tavi_home",
+      "scheduleId": "tavi_reed_schedule",
       "preferenceTags": ["snack", "route", "fiber"],
       "requestHookIds": ["first_delivery", "market_note"],
-      "relationshipHookIds": ["map_hint", "shop_tip"]
+      "relationshipHookIds": ["tavi_map_hint"],
+      "shopIds": ["tavi_general_store"],
+      "storyEventIds": ["arrival"]
     },
     {
       "id": "mara_well",
-      "displayName": "Mara Well",
-      "job": "Cook and community organizer",
+      "displayName": { "key": "npc.mara_well.name", "text": "Mara Well" },
+      "job": { "key": "npc.mara_well.job", "text": "Cook and community organizer" },
       "homeLocationId": "mara_home",
+      "scheduleId": "mara_well_schedule",
       "preferenceTags": ["meal", "crop", "warm"],
       "requestHookIds": ["stew_supplies", "harvest_setup"],
-      "relationshipHookIds": ["meal_gift", "festival_note"]
+      "relationshipHookIds": ["mara_meal_gift"],
+      "shopIds": [],
+      "storyEventIds": ["first_harvest"]
     },
     {
       "id": "ilo_fen",
-      "displayName": "Ilo Fen",
-      "job": "Naturalist",
+      "displayName": { "key": "npc.ilo_fen.name", "text": "Ilo Fen" },
+      "job": { "key": "npc.ilo_fen.job", "text": "Naturalist" },
       "homeLocationId": "ilo_home",
+      "scheduleId": "ilo_fen_schedule",
       "preferenceTags": ["forage", "rain", "wild"],
       "requestHookIds": ["rain_sample", "meadow_notes"],
-      "relationshipHookIds": ["forage_hint", "weather_note"]
+      "relationshipHookIds": ["ilo_forage_hint"],
+      "shopIds": [],
+      "storyEventIds": ["blocked_path_restoration"]
     },
     {
       "id": "sena_vale",
-      "displayName": "Sena Vale",
-      "job": "Archivist",
+      "displayName": { "key": "npc.sena_vale.name", "text": "Sena Vale" },
+      "job": { "key": "npc.sena_vale.job", "text": "Archivist" },
       "homeLocationId": "sena_home",
+      "scheduleId": "sena_vale_schedule",
       "preferenceTags": ["history", "paper", "curious"],
       "requestHookIds": ["old_marker", "garden_clue"],
-      "relationshipHookIds": ["story_recap", "archive_access"]
+      "relationshipHookIds": ["sena_archive_access"],
+      "shopIds": [],
+      "storyEventIds": ["arrival", "blocked_path_restoration"]
+    }
+  ],
+  "schedules": [
+    {
+      "id": "nia_moss_schedule",
+      "npcId": "nia_moss",
+      "entries": [
+        { "dayType": "weekday", "startHour": 0, "endHour": 8, "locationId": "nia_home", "activity": { "key": "schedule.nia.weekday.home_morning", "text": "At home before opening the seed stand" } },
+        { "dayType": "weekday", "startHour": 8, "endHour": 17, "locationId": "seed_shop", "activity": { "key": "schedule.nia.weekday.shop", "text": "Tending seed trays at the stand" } },
+        { "dayType": "weekday", "startHour": 17, "endHour": 21, "locationId": "village_square", "activity": { "key": "schedule.nia.weekday.square", "text": "Checking garden beds near the square" } },
+        { "dayType": "weekday", "startHour": 21, "endHour": 24, "locationId": "nia_home", "activity": { "key": "schedule.nia.weekday.home_night", "text": "Sorting seeds at home" } },
+        { "dayType": "weekend", "startHour": 0, "endHour": 9, "locationId": "nia_home", "activity": { "key": "schedule.nia.weekend.home_morning", "text": "At home before a slower market day" } },
+        { "dayType": "weekend", "startHour": 9, "endHour": 14, "locationId": "village_square", "activity": { "key": "schedule.nia.weekend.square", "text": "Trading seed tips in the square" } },
+        { "dayType": "weekend", "startHour": 14, "endHour": 18, "locationId": "seed_shop", "activity": { "key": "schedule.nia.weekend.shop", "text": "Opening the seed stand for afternoon shoppers" } },
+        { "dayType": "weekend", "startHour": 18, "endHour": 24, "locationId": "nia_home", "activity": { "key": "schedule.nia.weekend.home_night", "text": "Resting at home" } }
+      ]
+    },
+    {
+      "id": "oren_clay_schedule",
+      "npcId": "oren_clay",
+      "entries": [
+        { "dayType": "weekday", "startHour": 0, "endHour": 8, "locationId": "oren_home", "activity": { "key": "schedule.oren.weekday.home_morning", "text": "Reviewing repair notes at home" } },
+        { "dayType": "weekday", "startHour": 8, "endHour": 17, "locationId": "workshop", "activity": { "key": "schedule.oren.weekday.workshop", "text": "Working the bench at the workshop" } },
+        { "dayType": "weekday", "startHour": 17, "endHour": 21, "locationId": "old_path", "activity": { "key": "schedule.oren.weekday.path", "text": "Inspecting the old garden path" } },
+        { "dayType": "weekday", "startHour": 21, "endHour": 24, "locationId": "oren_home", "activity": { "key": "schedule.oren.weekday.home_night", "text": "Cleaning tools at home" } },
+        { "dayType": "weekend", "startHour": 0, "endHour": 9, "locationId": "oren_home", "activity": { "key": "schedule.oren.weekend.home_morning", "text": "At home before workshop errands" } },
+        { "dayType": "weekend", "startHour": 9, "endHour": 14, "locationId": "village_square", "activity": { "key": "schedule.oren.weekend.square", "text": "Helping neighbors with small fixes" } },
+        { "dayType": "weekend", "startHour": 14, "endHour": 18, "locationId": "workshop", "activity": { "key": "schedule.oren.weekend.workshop", "text": "Finishing afternoon repairs" } },
+        { "dayType": "weekend", "startHour": 18, "endHour": 24, "locationId": "oren_home", "activity": { "key": "schedule.oren.weekend.home_night", "text": "Resting at home" } }
+      ]
+    },
+    {
+      "id": "tavi_reed_schedule",
+      "npcId": "tavi_reed",
+      "entries": [
+        { "dayType": "weekday", "startHour": 0, "endHour": 8, "locationId": "tavi_home", "activity": { "key": "schedule.tavi.weekday.home_morning", "text": "Packing route notes at home" } },
+        { "dayType": "weekday", "startHour": 8, "endHour": 17, "locationId": "general_goods", "activity": { "key": "schedule.tavi.weekday.store", "text": "Running the general goods counter" } },
+        { "dayType": "weekday", "startHour": 17, "endHour": 21, "locationId": "village_square", "activity": { "key": "schedule.tavi.weekday.square", "text": "Sorting deliveries in the square" } },
+        { "dayType": "weekday", "startHour": 21, "endHour": 24, "locationId": "tavi_home", "activity": { "key": "schedule.tavi.weekday.home_night", "text": "Updating courier lists at home" } },
+        { "dayType": "weekend", "startHour": 0, "endHour": 9, "locationId": "tavi_home", "activity": { "key": "schedule.tavi.weekend.home_morning", "text": "At home before weekend deliveries" } },
+        { "dayType": "weekend", "startHour": 9, "endHour": 14, "locationId": "village_square", "activity": { "key": "schedule.tavi.weekend.square", "text": "Meeting travelers in the square" } },
+        { "dayType": "weekend", "startHour": 14, "endHour": 18, "locationId": "general_goods", "activity": { "key": "schedule.tavi.weekend.store", "text": "Opening the shop for weekend supplies" } },
+        { "dayType": "weekend", "startHour": 18, "endHour": 24, "locationId": "tavi_home", "activity": { "key": "schedule.tavi.weekend.home_night", "text": "Resting at home" } }
+      ]
+    },
+    {
+      "id": "mara_well_schedule",
+      "npcId": "mara_well",
+      "entries": [
+        { "dayType": "weekday", "startHour": 0, "endHour": 8, "locationId": "mara_home", "activity": { "key": "schedule.mara.weekday.home_morning", "text": "Preparing breakfast at home" } },
+        { "dayType": "weekday", "startHour": 8, "endHour": 17, "locationId": "community_kitchen", "activity": { "key": "schedule.mara.weekday.kitchen", "text": "Cooking at the community kitchen" } },
+        { "dayType": "weekday", "startHour": 17, "endHour": 21, "locationId": "village_square", "activity": { "key": "schedule.mara.weekday.square", "text": "Checking in with neighbors" } },
+        { "dayType": "weekday", "startHour": 21, "endHour": 24, "locationId": "mara_home", "activity": { "key": "schedule.mara.weekday.home_night", "text": "Writing menu notes at home" } },
+        { "dayType": "weekend", "startHour": 0, "endHour": 9, "locationId": "mara_home", "activity": { "key": "schedule.mara.weekend.home_morning", "text": "At home before shared supper prep" } },
+        { "dayType": "weekend", "startHour": 9, "endHour": 14, "locationId": "community_kitchen", "activity": { "key": "schedule.mara.weekend.kitchen", "text": "Preparing weekend stew" } },
+        { "dayType": "weekend", "startHour": 14, "endHour": 18, "locationId": "village_square", "activity": { "key": "schedule.mara.weekend.square", "text": "Sharing warm meals in the square" } },
+        { "dayType": "weekend", "startHour": 18, "endHour": 24, "locationId": "mara_home", "activity": { "key": "schedule.mara.weekend.home_night", "text": "Resting at home" } }
+      ]
+    },
+    {
+      "id": "ilo_fen_schedule",
+      "npcId": "ilo_fen",
+      "entries": [
+        { "dayType": "weekday", "startHour": 0, "endHour": 8, "locationId": "ilo_home", "activity": { "key": "schedule.ilo.weekday.home_morning", "text": "Reviewing field sketches at home" } },
+        { "dayType": "weekday", "startHour": 8, "endHour": 17, "locationId": "meadow_edge", "activity": { "key": "schedule.ilo.weekday.meadow", "text": "Studying meadow plants" } },
+        { "dayType": "weekday", "startHour": 17, "endHour": 21, "locationId": "village_square", "activity": { "key": "schedule.ilo.weekday.square", "text": "Comparing notes in the square" } },
+        { "dayType": "weekday", "startHour": 21, "endHour": 24, "locationId": "ilo_home", "activity": { "key": "schedule.ilo.weekday.home_night", "text": "Drying samples at home" } },
+        { "dayType": "weekend", "startHour": 0, "endHour": 9, "locationId": "ilo_home", "activity": { "key": "schedule.ilo.weekend.home_morning", "text": "At home before a meadow walk" } },
+        { "dayType": "weekend", "startHour": 9, "endHour": 14, "locationId": "meadow_edge", "activity": { "key": "schedule.ilo.weekend.meadow", "text": "Mapping new forage patches" } },
+        { "dayType": "weekend", "startHour": 14, "endHour": 18, "locationId": "village_square", "activity": { "key": "schedule.ilo.weekend.square", "text": "Teaching plant names in the square" } },
+        { "dayType": "weekend", "startHour": 18, "endHour": 24, "locationId": "ilo_home", "activity": { "key": "schedule.ilo.weekend.home_night", "text": "Resting at home" } }
+      ]
+    },
+    {
+      "id": "sena_vale_schedule",
+      "npcId": "sena_vale",
+      "entries": [
+        { "dayType": "weekday", "startHour": 0, "endHour": 8, "locationId": "sena_home", "activity": { "key": "schedule.sena.weekday.home_morning", "text": "Cataloging notes at home" } },
+        { "dayType": "weekday", "startHour": 8, "endHour": 17, "locationId": "archive", "activity": { "key": "schedule.sena.weekday.archive", "text": "Working at the archive desk" } },
+        { "dayType": "weekday", "startHour": 17, "endHour": 21, "locationId": "old_path", "activity": { "key": "schedule.sena.weekday.path", "text": "Checking markers near the old path" } },
+        { "dayType": "weekday", "startHour": 21, "endHour": 24, "locationId": "sena_home", "activity": { "key": "schedule.sena.weekday.home_night", "text": "Reading at home" } },
+        { "dayType": "weekend", "startHour": 0, "endHour": 9, "locationId": "sena_home", "activity": { "key": "schedule.sena.weekend.home_morning", "text": "At home before archive hours" } },
+        { "dayType": "weekend", "startHour": 9, "endHour": 14, "locationId": "archive", "activity": { "key": "schedule.sena.weekend.archive", "text": "Opening the archive for neighbors" } },
+        { "dayType": "weekend", "startHour": 14, "endHour": 18, "locationId": "village_square", "activity": { "key": "schedule.sena.weekend.square", "text": "Collecting village stories" } },
+        { "dayType": "weekend", "startHour": 18, "endHour": 24, "locationId": "sena_home", "activity": { "key": "schedule.sena.weekend.home_night", "text": "Resting at home" } }
+      ]
+    }
+  ],
+  "dialogue": [
+    { "id": "nia_first_meet", "speakerId": "nia_moss", "category": "first_meet", "text": { "key": "dialogue.nia.first_meet", "text": "You found the farm at a good time. The soil is awake." }, "priority": 80, "cooldownDays": 0, "setsFlagIds": ["met_nia_moss"] },
+    { "id": "nia_daily", "speakerId": "nia_moss", "category": "daily", "text": { "key": "dialogue.nia.daily", "text": "Water early and the beds will forgive a busy afternoon." }, "priority": 10, "cooldownDays": 1 },
+    { "id": "oren_first_meet", "speakerId": "oren_clay", "category": "first_meet", "text": { "key": "dialogue.oren.first_meet", "text": "If a hinge complains, listen before it breaks." }, "priority": 80, "cooldownDays": 0, "setsFlagIds": ["met_oren_clay"] },
+    { "id": "oren_daily", "speakerId": "oren_clay", "category": "daily", "text": { "key": "dialogue.oren.daily", "text": "Stone, fiber, patience. Most repairs want those three." }, "priority": 10, "cooldownDays": 1 },
+    { "id": "tavi_first_meet", "speakerId": "tavi_reed", "category": "first_meet", "text": { "key": "dialogue.tavi.first_meet", "text": "I keep the shelves honest and the road gossip sorted." }, "priority": 80, "cooldownDays": 0, "setsFlagIds": ["met_tavi_reed"] },
+    { "id": "tavi_daily", "speakerId": "tavi_reed", "category": "daily", "text": { "key": "dialogue.tavi.daily", "text": "Bring me odd scraps if your bag gets too full." }, "priority": 10, "cooldownDays": 1 },
+    { "id": "mara_first_meet", "speakerId": "mara_well", "category": "first_meet", "text": { "key": "dialogue.mara.first_meet", "text": "A village settles faster when someone keeps soup warm." }, "priority": 80, "cooldownDays": 0, "setsFlagIds": ["met_mara_well"] },
+    { "id": "mara_daily", "speakerId": "mara_well", "category": "daily", "text": { "key": "dialogue.mara.daily", "text": "Fresh greens make even a small supper feel planned." }, "priority": 10, "cooldownDays": 1 },
+    { "id": "ilo_first_meet", "speakerId": "ilo_fen", "category": "first_meet", "text": { "key": "dialogue.ilo.first_meet", "text": "The meadow leaves clues. Walk softly and it gives plenty." }, "priority": 80, "cooldownDays": 0, "setsFlagIds": ["met_ilo_fen"] },
+    { "id": "ilo_daily", "speakerId": "ilo_fen", "category": "daily", "text": { "key": "dialogue.ilo.daily", "text": "I saw fresh fiber near the tall grass this morning." }, "priority": 10, "cooldownDays": 1 },
+    { "id": "sena_first_meet", "speakerId": "sena_vale", "category": "first_meet", "text": { "key": "dialogue.sena.first_meet", "text": "Every path here has a record, even the overgrown ones." }, "priority": 80, "cooldownDays": 0, "setsFlagIds": ["met_sena_vale"] },
+    { "id": "sena_daily", "speakerId": "sena_vale", "category": "daily", "text": { "key": "dialogue.sena.daily", "text": "If you find old stones, I can usually name their purpose." }, "priority": 10, "cooldownDays": 1 },
+    { "id": "arrival_story_nia", "speakerId": "nia_moss", "category": "story_event", "text": { "key": "dialogue.story.arrival_nia", "text": "Start with the field by your door. Small harvests count." }, "priority": 100, "cooldownDays": 0, "setsFlagIds": ["story_arrival_dialogue_seen"] },
+    { "id": "first_harvest_story_mara", "speakerId": "mara_well", "category": "story_event", "text": { "key": "dialogue.story.first_harvest_mara", "text": "That first basket changes the whole table." }, "priority": 100, "cooldownDays": 0, "setsFlagIds": ["story_first_harvest_dialogue_seen"] },
+    { "id": "path_story_oren", "speakerId": "oren_clay", "category": "story_event", "text": { "key": "dialogue.story.path_oren", "text": "The path will hold now. Give it use and it will stay open." }, "priority": 100, "cooldownDays": 0, "setsFlagIds": ["story_path_dialogue_seen"] }
+  ],
+  "relationshipMilestones": [
+    { "id": "nia_seed_unlock", "npcId": "nia_moss", "threshold": 20, "description": { "key": "relationship.nia_seed_unlock", "text": "Nia trusts the player with a better seed shelf." }, "setsFlagId": "rel_nia_20_seed_unlock" },
+    { "id": "oren_workshop_discount", "npcId": "oren_clay", "threshold": 20, "description": { "key": "relationship.oren_workshop_discount", "text": "Oren discounts basic workshop goods." }, "setsFlagId": "rel_oren_20_workshop_discount" },
+    { "id": "tavi_map_hint", "npcId": "tavi_reed", "threshold": 20, "description": { "key": "relationship.tavi_map_hint", "text": "Tavi shares a faster village route." }, "setsFlagId": "rel_tavi_20_map_hint" },
+    { "id": "mara_meal_gift", "npcId": "mara_well", "threshold": 20, "description": { "key": "relationship.mara_meal_gift", "text": "Mara sends a warm meal gift." }, "setsFlagId": "rel_mara_20_meal_gift" },
+    { "id": "ilo_forage_hint", "npcId": "ilo_fen", "threshold": 20, "description": { "key": "relationship.ilo_forage_hint", "text": "Ilo marks a reliable forage patch." }, "setsFlagId": "rel_ilo_20_forage_hint" },
+    { "id": "sena_archive_access", "npcId": "sena_vale", "threshold": 20, "description": { "key": "relationship.sena_archive_access", "text": "Sena opens a useful archive shelf." }, "setsFlagId": "rel_sena_20_archive_access" }
+  ],
+  "shops": [
+    {
+      "id": "nia_seed_stall",
+      "displayName": { "key": "shop.nia_seed_stall", "text": "Nia's Seed Stand" },
+      "ownerNpcId": "nia_moss",
+      "locationId": "seed_shop",
+      "stock": [
+        { "itemId": "turnip_seed", "quantity": 20, "restockIntervalDays": 1 },
+        { "itemId": "wild_herbs", "quantity": 4, "restockIntervalDays": 2 }
+      ],
+      "acceptedCategories": ["crop", "forage"],
+      "dailyBudget": 220,
+      "buyMultiplier": 0.5,
+      "sellMultiplier": 1.2
+    },
+    {
+      "id": "oren_workshop",
+      "displayName": { "key": "shop.oren_workshop", "text": "Oren's Workshop" },
+      "ownerNpcId": "oren_clay",
+      "locationId": "workshop",
+      "stock": [
+        { "itemId": "fieldstone", "quantity": 12, "restockIntervalDays": 1 },
+        { "itemId": "repair_plank", "quantity": 6, "restockIntervalDays": 2 },
+        { "itemId": "garden_path_kit", "quantity": 3, "restockIntervalDays": 3 }
+      ],
+      "acceptedCategories": ["material", "ore", "crafted", "decor"],
+      "dailyBudget": 320,
+      "buyMultiplier": 0.45,
+      "sellMultiplier": 1.35
+    },
+    {
+      "id": "tavi_general_store",
+      "displayName": { "key": "shop.tavi_general_store", "text": "Tavi's General Store" },
+      "ownerNpcId": "tavi_reed",
+      "locationId": "general_goods",
+      "stock": [
+        { "itemId": "note_paper", "quantity": 10, "restockIntervalDays": 1 },
+        { "itemId": "wild_fiber", "quantity": 8, "restockIntervalDays": 1 },
+        { "itemId": "simple_stool", "quantity": 2, "restockIntervalDays": 3 },
+        { "itemId": "stew_pot", "quantity": 1, "restockIntervalDays": 4 }
+      ],
+      "acceptedCategories": ["material", "decor", "forage"],
+      "dailyBudget": 260,
+      "buyMultiplier": 0.4,
+      "sellMultiplier": 1.25
+    }
+  ],
+  "contracts": [
+    { "id": "starter_crop_help", "requesterNpcId": "nia_moss", "title": { "key": "contract.starter_crop_help.title", "text": "Starter Crop Help" }, "description": { "key": "contract.starter_crop_help.description", "text": "Grow one turnip so Nia can check the soil." }, "objective": { "type": "growCrop", "itemId": "turnip_crop", "quantity": 1 }, "deadlineDays": 3, "reward": { "currency": 35, "affinity": 4 }, "repeatCooldownDays": 7, "memoryFlagId": "contract_starter_crop_help_done" },
+    { "id": "first_harvest", "requesterNpcId": "nia_moss", "title": { "key": "contract.first_harvest.title", "text": "First Harvest Basket" }, "description": { "key": "contract.first_harvest.description", "text": "Bring three turnips for the first village basket." }, "objective": { "type": "deliverItem", "itemId": "turnip_crop", "quantity": 3 }, "deadlineDays": 5, "reward": { "currency": 70, "affinity": 6 }, "repeatCooldownDays": 10, "memoryFlagId": "contract_first_harvest_done" },
+    { "id": "tool_repair_intro", "requesterNpcId": "oren_clay", "title": { "key": "contract.tool_repair_intro.title", "text": "Repair Bench Stones" }, "description": { "key": "contract.tool_repair_intro.description", "text": "Collect fieldstone so Oren can steady the repair bench." }, "objective": { "type": "fetchItem", "itemId": "fieldstone", "quantity": 4 }, "deadlineDays": 4, "reward": { "currency": 55, "affinity": 4 }, "repeatCooldownDays": 8, "memoryFlagId": "contract_tool_repair_intro_done" },
+    { "id": "garden_path_repair", "requesterNpcId": "oren_clay", "title": { "key": "contract.garden_path_repair.title", "text": "Patch the Garden Path" }, "description": { "key": "contract.garden_path_repair.description", "text": "Craft a garden path kit for the blocked path." }, "objective": { "type": "craftItem", "recipeId": "garden_path_kit_recipe", "quantity": 1 }, "deadlineDays": 6, "reward": { "currency": 95, "affinity": 8 }, "repeatCooldownDays": 14, "memoryFlagId": "contract_garden_path_repair_done" },
+    { "id": "first_delivery", "requesterNpcId": "tavi_reed", "title": { "key": "contract.first_delivery.title", "text": "Archive Delivery" }, "description": { "key": "contract.first_delivery.description", "text": "Visit the archive so Tavi can confirm the route." }, "objective": { "type": "visitLocation", "locationId": "archive" }, "deadlineDays": 2, "reward": { "currency": 30, "affinity": 3 }, "repeatCooldownDays": 5, "memoryFlagId": "contract_first_delivery_done" },
+    { "id": "market_note", "requesterNpcId": "tavi_reed", "title": { "key": "contract.market_note.title", "text": "Market Note" }, "description": { "key": "contract.market_note.description", "text": "Bring note paper for Tavi's market list." }, "objective": { "type": "fetchItem", "itemId": "note_paper", "quantity": 1 }, "deadlineDays": 3, "reward": { "currency": 25, "affinity": 3 }, "repeatCooldownDays": 5, "memoryFlagId": "contract_market_note_done" },
+    { "id": "stew_supplies", "requesterNpcId": "mara_well", "title": { "key": "contract.stew_supplies.title", "text": "Stew Supplies" }, "description": { "key": "contract.stew_supplies.description", "text": "Gather herbs for Mara's shared stew." }, "objective": { "type": "fetchItem", "itemId": "wild_herbs", "quantity": 2 }, "deadlineDays": 4, "reward": { "currency": 40, "affinity": 5 }, "repeatCooldownDays": 6, "memoryFlagId": "contract_stew_supplies_done" },
+    { "id": "harvest_setup", "requesterNpcId": "mara_well", "title": { "key": "contract.harvest_setup.title", "text": "Harvest Setup" }, "description": { "key": "contract.harvest_setup.description", "text": "Bring two turnips so Mara can test a simple supper." }, "objective": { "type": "deliverItem", "itemId": "turnip_crop", "quantity": 2 }, "deadlineDays": 5, "reward": { "currency": 55, "affinity": 5 }, "repeatCooldownDays": 8, "memoryFlagId": "contract_harvest_setup_done" },
+    { "id": "rain_sample", "requesterNpcId": "ilo_fen", "title": { "key": "contract.rain_sample.title", "text": "Rain Sample" }, "description": { "key": "contract.rain_sample.description", "text": "Gather herbs from the meadow edge for Ilo's notes." }, "objective": { "type": "gatherZone", "zoneId": "meadow_edge", "itemId": "wild_herbs", "quantity": 1 }, "deadlineDays": 3, "reward": { "currency": 30, "affinity": 4 }, "repeatCooldownDays": 6, "memoryFlagId": "contract_rain_sample_done" },
+    { "id": "meadow_notes", "requesterNpcId": "ilo_fen", "title": { "key": "contract.meadow_notes.title", "text": "Meadow Notes" }, "description": { "key": "contract.meadow_notes.description", "text": "Collect wild fiber so Ilo can compare meadow patches." }, "objective": { "type": "gatherZone", "zoneId": "meadow_edge", "itemId": "wild_fiber", "quantity": 3 }, "deadlineDays": 4, "reward": { "currency": 45, "affinity": 5 }, "repeatCooldownDays": 7, "memoryFlagId": "contract_meadow_notes_done" },
+    { "id": "old_marker", "requesterNpcId": "sena_vale", "title": { "key": "contract.old_marker.title", "text": "Old Marker" }, "description": { "key": "contract.old_marker.description", "text": "Visit the old garden path so Sena can update the archive map." }, "objective": { "type": "visitLocation", "locationId": "old_path" }, "deadlineDays": 4, "reward": { "currency": 40, "affinity": 4 }, "repeatCooldownDays": 7, "memoryFlagId": "contract_old_marker_done" },
+    { "id": "garden_clue", "requesterNpcId": "sena_vale", "title": { "key": "contract.garden_clue.title", "text": "Garden Clue" }, "description": { "key": "contract.garden_clue.description", "text": "Bring fieldstone samples from the old path repair." }, "objective": { "type": "fetchItem", "itemId": "fieldstone", "quantity": 2 }, "deadlineDays": 5, "reward": { "currency": 45, "affinity": 5 }, "repeatCooldownDays": 8, "memoryFlagId": "contract_garden_clue_done" }
+  ],
+  "zones": [
+    {
+      "id": "meadow_edge",
+      "displayName": { "key": "zone.meadow_edge", "text": "Meadow Edge" },
+      "locationId": "meadow_edge",
+      "dailyActionLimit": 5,
+      "actions": [
+        {
+          "id": "forage_herbs",
+          "displayName": { "key": "zone_action.forage_herbs", "text": "Forage Herbs" },
+          "energyCost": 5,
+          "rewards": [
+            { "itemId": "wild_herbs", "minQuantity": 1, "maxQuantity": 2, "weight": 80 },
+            { "itemId": "wild_fiber", "minQuantity": 1, "maxQuantity": 1, "weight": 20 }
+          ]
+        },
+        {
+          "id": "gather_fiber",
+          "displayName": { "key": "zone_action.gather_fiber", "text": "Gather Fiber" },
+          "energyCost": 4,
+          "rewards": [
+            { "itemId": "wild_fiber", "minQuantity": 1, "maxQuantity": 3, "weight": 100 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shallow_mine",
+      "displayName": { "key": "zone.shallow_mine", "text": "Shallow Mine" },
+      "locationId": "shallow_mine",
+      "dailyActionLimit": 6,
+      "actions": [
+        {
+          "id": "break_stone",
+          "displayName": { "key": "zone_action.break_stone", "text": "Break Stone" },
+          "energyCost": 7,
+          "rewards": [
+            { "itemId": "fieldstone", "minQuantity": 1, "maxQuantity": 3, "weight": 90 },
+            { "itemId": "copper_ore", "minQuantity": 1, "maxQuantity": 1, "weight": 10 }
+          ]
+        },
+        {
+          "id": "chip_copper",
+          "displayName": { "key": "zone_action.chip_copper", "text": "Chip Copper Vein" },
+          "energyCost": 9,
+          "rewards": [
+            { "itemId": "copper_ore", "minQuantity": 1, "maxQuantity": 2, "weight": 65 },
+            { "itemId": "fieldstone", "minQuantity": 1, "maxQuantity": 2, "weight": 35 }
+          ]
+        }
+      ]
+    }
+  ],
+  "decor": [
+    {
+      "id": "garden_path_decor",
+      "displayName": { "key": "decor.garden_path_decor", "text": "Garden Path" },
+      "itemId": "garden_path_kit",
+      "category": "path",
+      "size": { "width": 1, "height": 1 },
+      "supportsRotation": false,
+      "placement": "farm"
+    },
+    {
+      "id": "simple_stool_decor",
+      "displayName": { "key": "decor.simple_stool_decor", "text": "Simple Stool" },
+      "itemId": "simple_stool",
+      "category": "furniture",
+      "size": { "width": 1, "height": 1 },
+      "supportsRotation": true,
+      "placement": "home"
+    },
+    {
+      "id": "stew_pot_decor",
+      "displayName": { "key": "decor.stew_pot_decor", "text": "Stew Pot" },
+      "itemId": "stew_pot",
+      "category": "furniture",
+      "size": { "width": 2, "height": 1 },
+      "supportsRotation": true,
+      "placement": "home"
+    }
+  ],
+  "storyEvents": [
+    {
+      "id": "arrival",
+      "title": { "key": "story.arrival.title", "text": "Arrival" },
+      "summary": { "key": "story.arrival.summary", "text": "The player settles into the farm and meets the first neighbors." },
+      "triggerFlagIds": [],
+      "setsFlagIds": ["story_arrival_seen"],
+      "participantNpcIds": ["nia_moss", "tavi_reed", "sena_vale"],
+      "dialogueLineIds": ["arrival_story_nia"]
+    },
+    {
+      "id": "first_harvest",
+      "title": { "key": "story.first_harvest.title", "text": "First Harvest" },
+      "summary": { "key": "story.first_harvest.summary", "text": "The first useful crop becomes a shared village meal." },
+      "triggerFlagIds": ["contract_first_harvest_done"],
+      "setsFlagIds": ["story_first_harvest_seen"],
+      "participantNpcIds": ["mara_well", "nia_moss"],
+      "dialogueLineIds": ["first_harvest_story_mara"]
+    },
+    {
+      "id": "blocked_path_restoration",
+      "title": { "key": "story.blocked_path_restoration.title", "text": "Blocked Path Restoration" },
+      "summary": { "key": "story.blocked_path_restoration.summary", "text": "A repaired garden path reopens a compact village shortcut." },
+      "triggerFlagIds": ["contract_garden_path_repair_done"],
+      "setsFlagIds": ["story_path_restored"],
+      "participantNpcIds": ["oren_clay", "ilo_fen", "sena_vale"],
+      "dialogueLineIds": ["path_story_oren"]
     }
   ]
 }
