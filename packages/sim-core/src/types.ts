@@ -2,6 +2,22 @@ export const GAME_STATE_VERSION = 1;
 export const DEFAULT_CONTENT_VERSION = "v0.1-foundation";
 export const MINUTES_PER_DAY = 1440;
 export const DEFAULT_START_MINUTE = 6 * 60;
+export const MAX_TIME_ADVANCE_MINUTES = MINUTES_PER_DAY * 30;
+export const DEFAULT_MAX_ENERGY = 100;
+
+export const TIME_PHASES = {
+  NIGHT: "NIGHT",
+  MORNING: "MORNING",
+  AFTERNOON: "AFTERNOON",
+  EVENING: "EVENING"
+} as const;
+
+export const GAME_EVENT_TYPES = {
+  COMMAND_NOOP: "COMMAND_NOOP",
+  COMMAND_FAILED: "COMMAND_FAILED",
+  TIME_ADVANCED: "TIME_ADVANCED",
+  DAY_STARTED: "DAY_STARTED"
+} as const;
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | readonly JsonValue[];
@@ -14,6 +30,8 @@ export type ItemId = string;
 export type NpcId = string;
 export type GameEventId = string;
 export type AuditEventId = string;
+export type GameTimePhase = (typeof TIME_PHASES)[keyof typeof TIME_PHASES];
+export type GameEventType = (typeof GAME_EVENT_TYPES)[keyof typeof GAME_EVENT_TYPES] | string;
 
 export interface Inventory {
   readonly [itemId: ItemId]: number;
@@ -43,7 +61,7 @@ export interface GameEvent {
   readonly id: GameEventId;
   readonly sequence: number;
   readonly kind: "game";
-  readonly type: string;
+  readonly type: GameEventType;
   readonly category: GameEventCategory;
   readonly commandType: GameCommandType | "UNKNOWN";
   readonly message: string;
@@ -84,7 +102,7 @@ export interface GameState {
   readonly commandLog: CommandLogState;
 }
 
-export type GameCommandType = "NOOP" | "ADVANCE_TIME";
+export type GameCommandType = "NOOP" | "ADVANCE_TIME" | "SLEEP_TO_NEXT_DAY";
 
 export interface NoopCommand {
   readonly type: "NOOP";
@@ -100,12 +118,27 @@ export interface LegacyAdvanceTimeCommand {
   readonly minutes: number;
 }
 
-export type GameCommand = NoopCommand | AdvanceTimeCommand | LegacyAdvanceTimeCommand;
+export interface SleepToNextDayCommand {
+  readonly type: "SLEEP_TO_NEXT_DAY";
+}
+
+export interface LegacySleepToNextDayCommand {
+  readonly type: "sleepToNextDay";
+}
+
+export type GameCommand =
+  | NoopCommand
+  | AdvanceTimeCommand
+  | LegacyAdvanceTimeCommand
+  | SleepToNextDayCommand
+  | LegacySleepToNextDayCommand;
 
 export type CommandFailureCode =
   | "UNKNOWN_COMMAND"
   | "INVALID_COMMAND_SHAPE"
-  | "INVALID_ADVANCE_TIME_MINUTES";
+  | "INVALID_ADVANCE_TIME_MINUTES"
+  | "TIME_ADVANCE_EXCEEDS_LIMIT"
+  | "TIME_ADVANCE_OVERFLOW";
 
 export interface CommandFailure {
   readonly code: CommandFailureCode;

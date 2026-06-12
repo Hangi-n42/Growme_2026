@@ -1,4 +1,10 @@
-import { advanceGameTime, isPositiveIntegerMinute } from "./time";
+import {
+  advanceGameTime,
+  createGameTime,
+  getCrossedDayNumbers,
+  getMinutesUntilNextDayStart,
+  validateTimeAdvanceMinutes
+} from "./time";
 import type {
   AuditEvent,
   AuditEventType,
@@ -13,6 +19,7 @@ import type {
   GameTime,
   JsonObject
 } from "./types";
+import { DEFAULT_MAX_ENERGY, GAME_EVENT_TYPES, MINUTES_PER_DAY } from "./types";
 
 type CommandRecord = {
   readonly type: string;
@@ -49,6 +56,8 @@ export function reduceGameCommand(state: GameState, command: unknown): GameComma
       return applyNoop(state, command);
     case "ADVANCE_TIME":
       return advanceTime(state, command);
+    case "SLEEP_TO_NEXT_DAY":
+      return sleepToNextDay(state, command);
   }
 }
 
@@ -58,38 +67,75 @@ function applyNoop(state: GameState, command: CommandRecord): GameCommandResult 
       state,
       state.time,
       "NOOP",
-      "command.noop",
+      GAME_EVENT_TYPES.COMMAND_NOOP,
       "command",
       "No operation command applied.",
-      {}
+      {},
+      0
     )
   ]);
 }
 
 function advanceTime(state: GameState, command: CommandRecord): GameCommandResult {
-  if (!isPositiveIntegerMinute(command.minutes)) {
+  const validationFailure = validateTimeAdvanceMinutes(command.minutes);
+
+  if (validationFailure !== undefined) {
     return failCommand(state, command, {
-      code: "INVALID_ADVANCE_TIME_MINUTES",
+      code: validationFailure.code,
       commandType: "ADVANCE_TIME",
-      message: "ADVANCE_TIME requires a positive integer minute count.",
+      message: validationFailure.message,
       payload: {}
     });
   }
 
-  const time = advanceGameTime(state.time, command.minutes);
-  const timedState = withGameTime(state, time);
+  const minutes = command.minutes as number;
 
-  return succeedCommand(timedState, command as GameCommand, "ADVANCE_TIME", [
-    createGameEvent(
-      state,
-      time,
-      "ADVANCE_TIME",
-      "time.advanced",
-      "time",
-      "Simulation time advanced.",
-      { minutes: command.minutes }
-    )
-  ]);
+  if (!Number.isSafeInteger(state.time.elapsedMinutes + minutes)) {
+    return failCommand(state, command, {
+      code: "TIME_ADVANCE_OVERFLOW",
+      commandType: "ADVANCE_TIME",
+      message: "ADVANCE_TIME would exceed safe elapsed minute bounds.",
+      payload: {}
+    });
+  }
+
+  const time = advanceGameTime(state.time, minutes);
+  const timedState = withGameTime(state, time);
+  const events = createTimeAdvanceEvents(
+    state,
+    state.time,
+    time,
+    "ADVANCE_TIME",
+    minutes,
+    "advanceTime"
+  );
+
+  return succeedCommand(timedState, command as GameCommand, "ADVANCE_TIME", events);
+}
+
+function sleepToNextDay(state: GameState, command: CommandRecord): GameCommandResult {
+  const minutes = getMinutesUntilNextDayStart(state.time);
+  const time = advanceGameTime(state.time, minutes);
+  const sleptState = withGameTime(
+    {
+      ...state,
+      player: {
+        ...state.player,
+        energy: DEFAULT_MAX_ENERGY
+      }
+    },
+    time
+  );
+  const events = createTimeAdvanceEvents(
+    state,
+    state.time,
+    time,
+    "SLEEP_TO_NEXT_DAY",
+    minutes,
+    "sleepToNextDay"
+  );
+
+  return succeedCommand(sleptState, command as GameCommand, "SLEEP_TO_NEXT_DAY", events);
 }
 
 function succeedCommand(
@@ -137,13 +183,14 @@ function failCommand(
     state,
     state.time,
     failure.commandType,
-    "command.failed",
+    GAME_EVENT_TYPES.COMMAND_FAILED,
     "command",
     failure.message,
     {
       code: failure.code,
       commandSequence: state.commandLog.nextSequence
-    }
+    },
+    0
   );
   const audit = createAuditEvent(
     state,
@@ -185,9 +232,10 @@ function createGameEvent(
   type: string,
   category: GameEventCategory,
   message: string,
-  payload: JsonObject
+  payload: JsonObject,
+  sequenceOffset: number
 ): GameEvent {
-  const sequence = state.eventLog.length;
+  const sequence = state.eventLog.length + sequenceOffset;
 
   return {
     id: `evt-${sequence.toString().padStart(6, "0")}`,
@@ -200,6 +248,64 @@ function createGameEvent(
     time,
     payload
   };
+}
+
+function createTimeAdvanceEvents(
+  state: GameState,
+  startTime: GameTime,
+  endTime: GameTime,
+  commandType: GameCommandType,
+  minutes: number,
+  reason: string
+): readonly GameEvent[] {
+  const crossedDays = getCrossedDayNumbers(startTime, endTime);
+  const events: GameEvent[] = [];
+
+  for (const day of crossedDays) {
+    events.push(
+      createGameEvent(
+        state,
+        createGameTime(day, 0),
+        commandType,
+        GAME_EVENT_TYPES.DAY_STARTED,
+        "time",
+        "New simulation day started.",
+        {
+          day,
+          previousDay: day - 1,
+          totalElapsedMinutes: (day - 1) * MINUTES_PER_DAY,
+          reason
+        },
+        events.length
+      )
+    );
+  }
+
+  events.push(
+    createGameEvent(
+      state,
+      endTime,
+      commandType,
+      GAME_EVENT_TYPES.TIME_ADVANCED,
+      "time",
+      "Simulation time advanced.",
+      {
+        minutes,
+        fromDay: startTime.day,
+        fromMinuteOfDay: startTime.minuteOfDay,
+        fromElapsedMinutes: startTime.elapsedMinutes,
+        toDay: endTime.day,
+        toMinuteOfDay: endTime.minuteOfDay,
+        toElapsedMinutes: endTime.elapsedMinutes,
+        crossedDayCount: crossedDays.length,
+        crossedDays,
+        reason
+      },
+      events.length
+    )
+  );
+
+  return events;
 }
 
 function createAuditEvent(
@@ -231,6 +337,10 @@ function canonicalCommandType(type: string): GameCommandType | undefined {
 
   if (type === "ADVANCE_TIME" || type === "advanceTime") {
     return "ADVANCE_TIME";
+  }
+
+  if (type === "SLEEP_TO_NEXT_DAY" || type === "sleepToNextDay") {
+    return "SLEEP_TO_NEXT_DAY";
   }
 
   return undefined;
