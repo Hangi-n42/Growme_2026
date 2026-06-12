@@ -1,0 +1,7 @@
+{
+  "description": "Duplicate item IDs are rejected.",
+  "patches": [
+    { "op": "replace", "path": ["items", 1, "id"], "value": "turnip_seed" }
+  ],
+  "expectedErrors": ["Duplicate item id: turnip_seed"]
+}

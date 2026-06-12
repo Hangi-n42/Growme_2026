@@ -1,0 +1,7 @@
+{
+  "description": "Empty player-facing localized text is rejected.",
+  "patches": [
+    { "op": "replace", "path": ["residents", 0, "displayName", "text"], "value": " " }
+  ],
+  "expectedErrors": ["resident nia_moss.displayName.text must be a non-empty string"]
+}
