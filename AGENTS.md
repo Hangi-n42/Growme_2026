@@ -75,3 +75,17 @@ The initial scaffold uses dependency-free smoke scripts where packages are not i
 - NPC dialogue: authored data only, no runtime LLM dialogue.
 - Save strategy: local save first.
 - Quality gate policy: thresholds may only tighten without an explicit ADR.
+
+## Local Windows command rule
+
+On this Windows Codex App environment, direct `pnpm` may not be on PATH because Corepack cannot create global shims under C:\Program Files\nodejs.
+
+Use explicit Corepack invocation for local commands:
+
+- corepack pnpm@10.12.1 install --frozen-lockfile
+- corepack pnpm@10.12.1 run lint
+- corepack pnpm@10.12.1 run typecheck
+- corepack pnpm@10.12.1 run test:unit
+- corepack pnpm@10.12.1 run test:sim
+
+Do not assume the global `pnpm` shim exists in local Codex App worktrees. 

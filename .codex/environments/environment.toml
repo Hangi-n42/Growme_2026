@@ -4,18 +4,121 @@ name = "Growme_2026"
 
 [setup]
 script = '''
-if (Test-Path -LiteralPath "package.json") {
-  $corepackHome = Join-Path ([System.IO.Path]::GetTempPath()) "codex-corepack"
-  New-Item -ItemType Directory -Force -Path $corepackHome | Out-Null
-  $env:COREPACK_HOME = $corepackHome
+$ErrorActionPreference = "Stop"
 
-  corepack pnpm@9.15.0 install --frozen-lockfile
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Write-Host "== Codex local setup: Growme_2026 =="
 
-  corepack pnpm@9.15.0 exec playwright install --with-deps chromium
-  if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Playwright browser/dependency installation failed; continuing."
-    $global:LASTEXITCODE = 0
+# This setup script is intended for Codex App on native Windows PowerShell.
+# It avoids global Corepack shims because they can fail under C:\Program Files\nodejs.
+# Always call pnpm through: corepack pnpm@<version> ...
+
+if (-not (Test-Path -LiteralPath "package.json")) {
+  Write-Host "No package.json found. Skipping dependency setup."
+  exit 0
+}
+
+function Invoke-Native {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string] $Description,
+
+    [Parameter(Mandatory = $true)]
+    [string] $FilePath,
+
+    [Parameter(Mandatory = $true)]
+    [string[]] $Arguments,
+
+    [switch] $AllowFailure
+  )
+
+  Write-Host ""
+  Write-Host "== $Description =="
+  Write-Host "$FilePath $($Arguments -join ' ')"
+
+  & $FilePath @Arguments
+  $exitCode = $LASTEXITCODE
+
+  if ($exitCode -ne 0) {
+    if ($AllowFailure) {
+      Write-Warning "$Description failed with exit code $exitCode; continuing."
+      $global:LASTEXITCODE = 0
+      return
+    }
+
+    throw "$Description failed with exit code $exitCode."
   }
 }
+
+# Put Corepack's cache/config into a user-writable temp directory.
+# This avoids permission errors when Corepack tries to touch global locations.
+$corepackHome = Join-Path ([System.IO.Path]::GetTempPath()) "codex-corepack"
+New-Item -ItemType Directory -Force -Path $corepackHome | Out-Null
+$env:COREPACK_HOME = $corepackHome
+
+Write-Host "COREPACK_HOME=$env:COREPACK_HOME"
+
+# Prefer the packageManager field from package.json.
+# Fall back to the pnpm version we have been using successfully in this repo.
+$defaultPnpmVersion = "10.12.1"
+$pnpmVersion = $defaultPnpmVersion
+
+try {
+  $packageJson = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
+
+  if ($packageJson.packageManager -and ($packageJson.packageManager -match "^pnpm@(.+)$")) {
+    $pnpmVersion = $Matches[1]
+  }
+}
+catch {
+  Write-Warning "Could not parse package.json packageManager; using pnpm@$defaultPnpmVersion."
+  $pnpmVersion = $defaultPnpmVersion
+}
+
+$pnpmSpec = "pnpm@$pnpmVersion"
+
+Write-Host "Using $pnpmSpec"
+
+Invoke-Native `
+  -Description "Print Node version" `
+  -FilePath "node" `
+  -Arguments @("--version")
+
+Invoke-Native `
+  -Description "Print Corepack version" `
+  -FilePath "corepack" `
+  -Arguments @("--version")
+
+if (Test-Path -LiteralPath "pnpm-lock.yaml") {
+  Invoke-Native `
+    -Description "Install dependencies with frozen lockfile" `
+    -FilePath "corepack" `
+    -Arguments @($pnpmSpec, "install", "--frozen-lockfile")
+}
+else {
+  Write-Warning "pnpm-lock.yaml not found; running non-frozen install."
+  Invoke-Native `
+    -Description "Install dependencies" `
+    -FilePath "corepack" `
+    -Arguments @($pnpmSpec, "install")
+}
+
+# Playwright browser install:
+# On native Windows/macOS, system dependency installation is not needed.
+# On Linux CI, use --with-deps in the GitHub Actions workflow instead.
+$packageText = Get-Content -LiteralPath "package.json" -Raw
+$hasPlaywright = $packageText -match "@playwright/test|playwright"
+
+if ($hasPlaywright) {
+  Invoke-Native `
+    -Description "Install Playwright Chromium browser" `
+    -FilePath "corepack" `
+    -Arguments @($pnpmSpec, "exec", "playwright", "install", "chromium") `
+    -AllowFailure
+}
+else {
+  Write-Host "Playwright dependency not detected in root package.json; skipping browser install."
+}
+
+Write-Host ""
+Write-Host "== Codex local setup completed =="
 '''

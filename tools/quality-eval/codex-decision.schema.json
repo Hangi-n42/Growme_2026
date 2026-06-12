@@ -1,0 +1,466 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/codex-decision.schema.json",
+  "title": "Codex CI Decision Report",
+  "description": "Structured output contract for Codex GitHub Action quality review, autofix, release-candidate review, and autonomous development loop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "promptId",
+    "decision",
+    "summary",
+    "target",
+    "checks",
+    "qualityScores",
+    "p0",
+    "p1",
+    "p2",
+    "requiredFixes",
+    "evidence",
+    "nextTask"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "promptId": {
+      "type": "string",
+      "enum": [
+        "prompt-09-independent-quality-review",
+        "prompt-10-fix-failed-quality-gate",
+        "prompt-11-release-candidate-review",
+        "prompt-12-continue-autonomous-development"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PASS_RELEASE_CANDIDATE",
+        "FAIL_RELEASE_CANDIDATE",
+        "NO_CHANGES"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "branch",
+        "baseBranch",
+        "commit",
+        "pullRequestNumber",
+        "issueId",
+        "isReleaseCandidate"
+      ],
+      "properties": {
+        "repository": {
+          "type": ["string", "null"]
+        },
+        "branch": {
+          "type": ["string", "null"]
+        },
+        "baseBranch": {
+          "type": ["string", "null"]
+        },
+        "commit": {
+          "type": ["string", "null"]
+        },
+        "pullRequestNumber": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "issueId": {
+          "type": ["string", "null"]
+        },
+        "isReleaseCandidate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lint",
+        "typecheck",
+        "unitTests",
+        "integrationTests",
+        "economyPropertyTests",
+        "browserE2E",
+        "multiplayerSmoke",
+        "performanceSmoke",
+        "qualityEval",
+        "securityReview",
+        "architectureReview",
+        "uxReview",
+        "visualReview"
+      ],
+      "properties": {
+        "lint": { "$ref": "#/$defs/checkResult" },
+        "typecheck": { "$ref": "#/$defs/checkResult" },
+        "unitTests": { "$ref": "#/$defs/checkResult" },
+        "integrationTests": { "$ref": "#/$defs/checkResult" },
+        "economyPropertyTests": { "$ref": "#/$defs/checkResult" },
+        "browserE2E": { "$ref": "#/$defs/checkResult" },
+        "multiplayerSmoke": { "$ref": "#/$defs/checkResult" },
+        "performanceSmoke": { "$ref": "#/$defs/checkResult" },
+        "qualityEval": { "$ref": "#/$defs/checkResult" },
+        "securityReview": { "$ref": "#/$defs/checkResult" },
+        "architectureReview": { "$ref": "#/$defs/checkResult" },
+        "uxReview": { "$ref": "#/$defs/checkResult" },
+        "visualReview": { "$ref": "#/$defs/checkResult" }
+      }
+    },
+    "qualityScores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overall",
+        "economyIntegrity",
+        "security",
+        "architecture",
+        "testCoverage",
+        "uxPlayability",
+        "visualPolish",
+        "performance"
+      ],
+      "properties": {
+        "overall": { "$ref": "#/$defs/scoreOrNull" },
+        "economyIntegrity": { "$ref": "#/$defs/scoreOrNull" },
+        "security": { "$ref": "#/$defs/scoreOrNull" },
+        "architecture": { "$ref": "#/$defs/scoreOrNull" },
+        "testCoverage": { "$ref": "#/$defs/scoreOrNull" },
+        "uxPlayability": { "$ref": "#/$defs/scoreOrNull" },
+        "visualPolish": { "$ref": "#/$defs/scoreOrNull" },
+        "performance": { "$ref": "#/$defs/scoreOrNull" }
+      }
+    },
+    "p0": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "default": []
+    },
+    "p1": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "default": []
+    },
+    "p2": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "default": []
+    },
+    "requiredFixes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fixTask" },
+      "default": []
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commandsRun",
+        "filesReviewed",
+        "reportsRead",
+        "artifacts",
+        "notes"
+      ],
+      "properties": {
+        "commandsRun": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/commandEvidence" },
+          "default": []
+        },
+        "filesReviewed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "reportsRead": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifactEvidence" },
+          "default": []
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "nextTask": {
+      "anyOf": [
+        { "$ref": "#/$defs/nextTask" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "scoreOrNull": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checkResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "command",
+        "summary"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "not_run",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "command": {
+          "type": ["string", "null"]
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "severity",
+        "category",
+        "title",
+        "description",
+        "affectedFiles",
+        "evidence",
+        "requiredFix"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(P0|P1|P2)-[0-9]{3,}$"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2"]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "architecture",
+            "security",
+            "economy",
+            "qa",
+            "ux",
+            "visual",
+            "performance",
+            "release",
+            "ci",
+            "docs",
+            "client",
+            "server",
+            "infra"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "affectedFiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requiredFix": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "fixTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priority",
+        "title",
+        "description",
+        "suggestedAgent",
+        "relatedFindingIds"
+      ],
+      "properties": {
+        "priority": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggestedAgent": {
+          "type": "string",
+          "enum": [
+            "autonomous-orchestrator",
+            "pm-gdd",
+            "economy-designer",
+            "web-client-implementer",
+            "realtime-server-implementer",
+            "backend-implementer",
+            "qa-automation",
+            "security-auditor",
+            "architect-auditor",
+            "ux-playability-evaluator",
+            "visual-polish-evaluator",
+            "performance-evaluator",
+            "quality-director",
+            "release-manager"
+          ]
+        },
+        "relatedFindingIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(P0|P1|P2)-[0-9]{3,}$"
+          },
+          "default": []
+        }
+      }
+    },
+    "commandEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "status",
+        "summary"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "not_run",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "artifactEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "summary"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "json",
+            "markdown",
+            "log",
+            "screenshot",
+            "video",
+            "trace",
+            "coverage",
+            "other"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "nextTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "reason",
+        "suggestedAgent",
+        "issuePath"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggestedAgent": {
+          "type": "string",
+          "enum": [
+            "autonomous-orchestrator",
+            "pm-gdd",
+            "economy-designer",
+            "web-client-implementer",
+            "realtime-server-implementer",
+            "backend-implementer",
+            "qa-automation",
+            "security-auditor",
+            "architect-auditor",
+            "ux-playability-evaluator",
+            "visual-polish-evaluator",
+            "performance-evaluator",
+            "quality-director",
+            "release-manager"
+          ]
+        },
+        "issuePath": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}
