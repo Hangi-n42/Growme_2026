@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "residents": [
+    {
+      "id": "nia_moss",
+      "displayName": "Nia Moss",
+      "job": "Seed shop owner",
+      "homeLocationId": "nia_home",
+      "preferenceTags": ["fresh", "seed", "flower"],
+      "requestHookIds": ["starter_crop_help", "first_harvest"],
+      "relationshipHookIds": ["seed_unlock", "plant_care_tip"]
+    },
+    {
+      "id": "oren_clay",
+      "displayName": "Oren Clay",
+      "job": "Workshop keeper",
+      "homeLocationId": "oren_home",
+      "preferenceTags": ["stone", "repair", "crafted"],
+      "requestHookIds": ["tool_repair_intro", "garden_path_repair"],
+      "relationshipHookIds": ["workshop_discount", "repair_advice"]
+    },
+    {
+      "id": "tavi_reed",
+      "displayName": "Tavi Reed",
+      "job": "General goods clerk and courier",
+      "homeLocationId": "tavi_home",
+      "preferenceTags": ["snack", "route", "fiber"],
+      "requestHookIds": ["first_delivery", "market_note"],
+      "relationshipHookIds": ["map_hint", "shop_tip"]
+    },
+    {
+      "id": "mara_well",
+      "displayName": "Mara Well",
+      "job": "Cook and community organizer",
+      "homeLocationId": "mara_home",
+      "preferenceTags": ["meal", "crop", "warm"],
+      "requestHookIds": ["stew_supplies", "harvest_setup"],
+      "relationshipHookIds": ["meal_gift", "festival_note"]
+    },
+    {
+      "id": "ilo_fen",
+      "displayName": "Ilo Fen",
+      "job": "Naturalist",
+      "homeLocationId": "ilo_home",
+      "preferenceTags": ["forage", "rain", "wild"],
+      "requestHookIds": ["rain_sample", "meadow_notes"],
+      "relationshipHookIds": ["forage_hint", "weather_note"]
+    },
+    {
+      "id": "sena_vale",
+      "displayName": "Sena Vale",
+      "job": "Archivist",
+      "homeLocationId": "sena_home",
+      "preferenceTags": ["history", "paper", "curious"],
+      "requestHookIds": ["old_marker", "garden_clue"],
+      "relationshipHookIds": ["story_recap", "archive_access"]
+    }
+  ]
+}

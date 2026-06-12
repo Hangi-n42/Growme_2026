@@ -1,0 +1,61 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.12.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Protected file checks
+        run: |
+          pnpm check:protected-files
+          pnpm check:no-test-skip
+          pnpm check:no-quality-threshold-lowering
+
+      - name: Unit and simulation smoke
+        run: |
+          pnpm test:unit
+          pnpm test:sim
+          pnpm test:npc
+          pnpm test:economy
+          pnpm test:content
+          pnpm test:save-load
+
+      - name: Browser and performance smoke
+        run: |
+          pnpm test:e2e
+          pnpm test:first-3-days
+          pnpm test:perf-smoke
+
+      - name: Sim reports
+        run: |
+          pnpm sim:7days
+          pnpm sim:30days
+          pnpm eval:quality

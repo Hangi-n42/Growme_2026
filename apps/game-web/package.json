@@ -1,0 +1,15 @@
+{
+  "name": "@growme/game-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc -b",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@growme/sim-core": "workspace:*",
+    "phaser": "^3.90.0"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "growme-2026",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "lint": "node tools/scripts/lint.mjs",
+    "typecheck": "node tools/scripts/typecheck.mjs",
+    "test:unit": "node tools/scripts/unit-smoke.mjs",
+    "test:sim": "node tools/scripts/sim-smoke.mjs",
+    "test:npc": "node tools/scripts/npc-smoke.mjs",
+    "test:economy": "node tools/scripts/economy-smoke.mjs",
+    "test:content": "node tools/scripts/content-smoke.mjs",
+    "test:save-load": "node tools/scripts/save-load-smoke.mjs",
+    "test:e2e": "node tools/scripts/e2e-smoke.mjs",
+    "test:first-3-days": "node tools/scripts/first-3-days-smoke.mjs",
+    "test:perf-smoke": "node tools/scripts/perf-smoke.mjs",
+    "sim:7days": "node tools/scripts/sim-runner.mjs 7",
+    "sim:30days": "node tools/scripts/sim-runner.mjs 30",
+    "eval:quality": "node tools/scripts/quality-eval.mjs",
+    "check:protected-files": "node tools/scripts/protected-files.mjs",
+    "check:no-test-skip": "node tools/scripts/no-test-skip.mjs",
+    "check:no-quality-threshold-lowering": "node tools/scripts/no-quality-threshold-lowering.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  }
+}
