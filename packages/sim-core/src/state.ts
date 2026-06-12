@@ -2,6 +2,7 @@ import { createSeedState } from "./rng";
 import { createGameTime } from "./time";
 import {
   DEFAULT_CONTENT_VERSION,
+  DEFAULT_MAX_ENERGY,
   DEFAULT_START_MINUTE,
   GAME_STATE_VERSION,
   type GameState
@@ -26,7 +27,7 @@ export function createInitialGameState(options: CreateInitialStateOptions): Game
     day: time.day,
     minute: time.minuteOfDay,
     player: {
-      energy: 100,
+      energy: DEFAULT_MAX_ENERGY,
       wallet: 100,
       inventory: {}
     },

@@ -31,6 +31,9 @@ function isGameStateSnapshot(value: unknown): value is GameState {
     state.rng !== null &&
     typeof state.time === "object" &&
     state.time !== null &&
+    typeof state.time.day === "number" &&
+    typeof state.time.minuteOfDay === "number" &&
+    typeof state.time.elapsedMinutes === "number" &&
     typeof state.player === "object" &&
     state.player !== null &&
     Array.isArray(state.flags) &&
