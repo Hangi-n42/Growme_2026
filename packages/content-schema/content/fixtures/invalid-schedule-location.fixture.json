@@ -1,0 +1,7 @@
+{
+  "description": "NPC schedule locations must resolve.",
+  "patches": [
+    { "op": "replace", "path": ["schedules", 0, "entries", 0, "locationId"], "value": "missing_location" }
+  ],
+  "expectedErrors": ["schedule nia_moss_schedule.entries[0].locationId references unknown id: missing_location"]
+}

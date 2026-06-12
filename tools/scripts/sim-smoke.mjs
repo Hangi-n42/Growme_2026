@@ -6,7 +6,7 @@ const simCoreSources = listFiles().filter(
 
 runCheck("sim-core command boundary exists", () => {
   const commands = readText("packages/sim-core/src/commands.ts");
-  for (const expected of ["applyCommand", "reduceGameCommand", "NOOP", "ADVANCE_TIME", "command.failed"]) {
+  for (const expected of ["applyCommand", "reduceGameCommand", "NOOP", "ADVANCE_TIME", "SLEEP_TO_NEXT_DAY"]) {
     if (!commands.includes(expected)) {
       throw new Error(`Missing sim scaffold command marker: ${expected}`);
     }
@@ -22,9 +22,25 @@ runCheck("sim-core records deterministic seed", () => {
 
 runCheck("sim-core exposes replay and RNG APIs", () => {
   const index = readText("packages/sim-core/src/index.ts");
-  for (const expected of ["replayCommands", "createSeedState", "nextRandom", "nextRandomInt"]) {
+  for (const expected of [
+    "replayCommands",
+    "createSeedState",
+    "nextRandom",
+    "nextRandomInt",
+    "selectCurrentDay",
+    "didCommandCrossIntoNewDay"
+  ]) {
     if (!index.includes(expected)) {
       throw new Error(`sim-core index is missing ${expected}.`);
+    }
+  }
+});
+
+runCheck("sim-core emits deterministic time cycle events", () => {
+  const commands = readText("packages/sim-core/src/commands.ts");
+  for (const expected of ["TIME_ADVANCED", "DAY_STARTED", "getCrossedDayNumbers"]) {
+    if (!commands.includes(expected)) {
+      throw new Error(`sim-core time cycle missing ${expected}.`);
     }
   }
 });

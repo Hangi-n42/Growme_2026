@@ -1,0 +1,11 @@
+{
+  "description": "Shop price and contract reward bounds are enforced.",
+  "patches": [
+    { "op": "replace", "path": ["shops", 0, "buyMultiplier"], "value": 0.9 },
+    { "op": "replace", "path": ["contracts", 0, "reward", "currency"], "value": 999 }
+  ],
+  "expectedErrors": [
+    "shop nia_seed_stall.buyMultiplier must be between 0.35 and 0.6",
+    "contract starter_crop_help.reward.currency must be between 1 and 500"
+  ]
+}

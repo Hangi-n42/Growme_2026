@@ -43,7 +43,7 @@ describe("sim-core deterministic command foundation", () => {
       expect(first.state.time.minuteOfDay).toBe(390);
       expect(first.state.eventLog).toHaveLength(1);
       expect(first.state.auditLog).toHaveLength(1);
-      expect(first.events[0]?.type).toBe("time.advanced");
+      expect(first.events[0]?.type).toBe("TIME_ADVANCED");
       expect(first.audit[0]?.type).toBe("command.applied");
     }
   });
@@ -55,12 +55,12 @@ describe("sim-core deterministic command foundation", () => {
 
     expect(result.ok).toBe(false);
     expect(result.state).toBe(state);
-    expect(result.events[0]?.type).toBe("command.failed");
+    expect(result.events[0]?.type).toBe("COMMAND_FAILED");
     expect(result.audit[0]?.type).toBe("command.rejected");
 
     if (!result.ok) {
       expect(result.failure.code).toBe("INVALID_ADVANCE_TIME_MINUTES");
-      expect(result.error).toBe("ADVANCE_TIME requires a positive integer minute count.");
+      expect(result.error).toBe("ADVANCE_TIME requires a positive safe integer minute count.");
     }
   });
 
