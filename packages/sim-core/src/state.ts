@@ -1,5 +1,6 @@
 import { createSeedState } from "./rng";
 import { createGameTime } from "./time";
+import { createInitialFarmState } from "./farm";
 import {
   DEFAULT_CONTENT_VERSION,
   DEFAULT_MAX_ENERGY,
@@ -31,6 +32,7 @@ export function createInitialGameState(options: CreateInitialStateOptions): Game
       wallet: 100,
       inventory: {}
     },
+    farm: createInitialFarmState(),
     flags: [],
     eventLog: [],
     auditLog: [],

@@ -16,7 +16,14 @@ export const GAME_EVENT_TYPES = {
   COMMAND_NOOP: "COMMAND_NOOP",
   COMMAND_FAILED: "COMMAND_FAILED",
   TIME_ADVANCED: "TIME_ADVANCED",
-  DAY_STARTED: "DAY_STARTED"
+  DAY_STARTED: "DAY_STARTED",
+  FARM_TILE_TILLED: "FARM_TILE_TILLED",
+  FARM_CROP_PLANTED: "FARM_CROP_PLANTED",
+  FARM_CROP_WATERED: "FARM_CROP_WATERED",
+  FARM_CROP_GROWTH_ADVANCED: "FARM_CROP_GROWTH_ADVANCED",
+  FARM_CROP_READY: "FARM_CROP_READY",
+  FARM_CROP_HARVESTED: "FARM_CROP_HARVESTED",
+  FARM_TILE_CLEARED: "FARM_TILE_CLEARED"
 } as const;
 
 export type JsonPrimitive = string | number | boolean | null;
@@ -28,6 +35,7 @@ export interface JsonObject {
 
 export type ItemId = string;
 export type NpcId = string;
+export type CropId = string;
 export type GameEventId = string;
 export type AuditEventId = string;
 export type GameTimePhase = (typeof TIME_PHASES)[keyof typeof TIME_PHASES];
@@ -55,7 +63,49 @@ export interface PlayerState {
   readonly inventory: Inventory;
 }
 
-export type GameEventCategory = "command" | "system" | "time";
+export const FARM_TILE_STATES = {
+  UNTILLED: "untilled",
+  TILLED: "tilled",
+  PLANTED: "planted",
+  WATERED: "watered",
+  READY: "ready",
+  BLOCKED: "blocked"
+} as const;
+
+export type FarmTileState = (typeof FARM_TILE_STATES)[keyof typeof FARM_TILE_STATES];
+export type PostHarvestTileState = typeof FARM_TILE_STATES.UNTILLED | typeof FARM_TILE_STATES.TILLED;
+
+export interface FarmTile {
+  readonly x: number;
+  readonly y: number;
+  readonly state: FarmTileState;
+  readonly cropId?: CropId;
+  readonly seedItemId?: ItemId;
+  readonly harvestItemId?: ItemId;
+  readonly plantedDay?: number;
+  readonly wateredOnDay?: number;
+  readonly growthDaysWatered?: number;
+  readonly readyDay?: number;
+}
+
+export interface CropDefinition {
+  readonly id: CropId;
+  readonly seedItemId: ItemId;
+  readonly harvestItemId: ItemId;
+  readonly growthDays: number;
+  readonly harvestQuantity: number;
+  readonly requiresWater: boolean;
+  readonly postHarvestTileState: PostHarvestTileState;
+}
+
+export interface FarmState {
+  readonly width: number;
+  readonly height: number;
+  readonly tiles: readonly FarmTile[];
+  readonly cropDefinitions: readonly CropDefinition[];
+}
+
+export type GameEventCategory = "command" | "system" | "time" | "farm";
 
 export interface GameEvent {
   readonly id: GameEventId;
@@ -96,13 +146,22 @@ export interface GameState {
   readonly day: number;
   readonly minute: number;
   readonly player: PlayerState;
+  readonly farm: FarmState;
   readonly flags: readonly string[];
   readonly eventLog: readonly GameEvent[];
   readonly auditLog: readonly AuditEvent[];
   readonly commandLog: CommandLogState;
 }
 
-export type GameCommandType = "NOOP" | "ADVANCE_TIME" | "SLEEP_TO_NEXT_DAY";
+export type GameCommandType =
+  | "NOOP"
+  | "ADVANCE_TIME"
+  | "SLEEP_TO_NEXT_DAY"
+  | "TILL_TILE"
+  | "PLANT_CROP"
+  | "WATER_CROP"
+  | "HARVEST_CROP"
+  | "CLEAR_TILE";
 
 export interface NoopCommand {
   readonly type: "NOOP";
@@ -126,19 +185,103 @@ export interface LegacySleepToNextDayCommand {
   readonly type: "sleepToNextDay";
 }
 
+export interface TillTileCommand {
+  readonly type: "TILL_TILE";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface LegacyTillTileCommand {
+  readonly type: "tillTile";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface PlantCropCommand {
+  readonly type: "PLANT_CROP";
+  readonly x: number;
+  readonly y: number;
+  readonly seedItemId: ItemId;
+}
+
+export interface LegacyPlantCropCommand {
+  readonly type: "plantCrop";
+  readonly x: number;
+  readonly y: number;
+  readonly seedItemId: ItemId;
+}
+
+export interface WaterCropCommand {
+  readonly type: "WATER_CROP";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface LegacyWaterCropCommand {
+  readonly type: "waterCrop";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface HarvestCropCommand {
+  readonly type: "HARVEST_CROP";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface LegacyHarvestCropCommand {
+  readonly type: "harvestCrop";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface ClearTileCommand {
+  readonly type: "CLEAR_TILE";
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface LegacyClearTileCommand {
+  readonly type: "clearTile";
+  readonly x: number;
+  readonly y: number;
+}
+
 export type GameCommand =
   | NoopCommand
   | AdvanceTimeCommand
   | LegacyAdvanceTimeCommand
   | SleepToNextDayCommand
-  | LegacySleepToNextDayCommand;
+  | LegacySleepToNextDayCommand
+  | TillTileCommand
+  | LegacyTillTileCommand
+  | PlantCropCommand
+  | LegacyPlantCropCommand
+  | WaterCropCommand
+  | LegacyWaterCropCommand
+  | HarvestCropCommand
+  | LegacyHarvestCropCommand
+  | ClearTileCommand
+  | LegacyClearTileCommand;
 
 export type CommandFailureCode =
   | "UNKNOWN_COMMAND"
   | "INVALID_COMMAND_SHAPE"
   | "INVALID_ADVANCE_TIME_MINUTES"
   | "TIME_ADVANCE_EXCEEDS_LIMIT"
-  | "TIME_ADVANCE_OVERFLOW";
+  | "TIME_ADVANCE_OVERFLOW"
+  | "INVALID_TILE_COORDINATES"
+  | "FARM_TILE_BLOCKED"
+  | "FARM_TILE_NOT_TILLABLE"
+  | "FARM_TILE_NOT_PLANTABLE"
+  | "FARM_TILE_NOT_WATERABLE"
+  | "FARM_TILE_NOT_CLEARABLE"
+  | "UNKNOWN_CROP_SEED"
+  | "UNKNOWN_CROP"
+  | "INVALID_SEED_ITEM"
+  | "INSUFFICIENT_ENERGY"
+  | "INVENTORY_TRANSACTION_FAILED"
+  | "CROP_NOT_READY";
 
 export interface CommandFailure {
   readonly code: CommandFailureCode;

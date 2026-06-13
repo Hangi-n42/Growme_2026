@@ -1,5 +1,24 @@
 export { applyCommand, reduceGameCommand } from "./commands";
 export {
+  DEFAULT_CROP_DEFINITIONS,
+  DEFAULT_FARM_HEIGHT,
+  DEFAULT_FARM_ITEM_STACK_LIMIT,
+  DEFAULT_FARM_WIDTH,
+  FARM_ENERGY_COSTS,
+  advanceFarmByCrossedDays,
+  createClearedFarmTile,
+  createHarvestedFarmTile,
+  createInitialFarmState,
+  createPlantedFarmTile,
+  createTilledFarmTile,
+  createWateredFarmTile,
+  findFarmTile,
+  getCropDefinition,
+  getCropDefinitionForSeed,
+  getFarmItemStackLimits,
+  replaceFarmTile
+} from "./farm";
+export {
   MAX_WALLET_BALANCE,
   addInventoryItem,
   applyPlayerTransaction,
@@ -15,6 +34,8 @@ export { createInitialGameState, createInitialState } from "./state";
 export {
   didCommandCrossIntoNewDay,
   didTimeAdvanceCrossIntoNewDay,
+  selectFarmTile,
+  selectFarmTiles,
   selectCurrentDay,
   selectMinuteOfDay,
   selectTimePhase,
@@ -38,6 +59,7 @@ export {
   DEFAULT_CONTENT_VERSION,
   DEFAULT_MAX_ENERGY,
   DEFAULT_START_MINUTE,
+  FARM_TILE_STATES,
   GAME_EVENT_TYPES,
   GAME_STATE_VERSION,
   MAX_TIME_ADVANCE_MINUTES,
@@ -54,6 +76,12 @@ export type {
   CommandFailureResult,
   CommandLogState,
   CommandSuccessResult,
+  ClearTileCommand,
+  CropDefinition,
+  CropId,
+  FarmState,
+  FarmTile,
+  FarmTileState,
   GameCommand,
   GameCommandResult,
   GameCommandType,
@@ -70,18 +98,34 @@ export type {
   JsonPrimitive,
   JsonValue,
   LegacyAdvanceTimeCommand,
+  LegacyClearTileCommand,
+  LegacyHarvestCropCommand,
+  LegacyPlantCropCommand,
   LegacySleepToNextDayCommand,
+  LegacyTillTileCommand,
+  LegacyWaterCropCommand,
   NoopCommand,
   NpcId,
+  PlantCropCommand,
   PlayerState,
+  PostHarvestTileState,
   SeedState,
+  HarvestCropCommand,
   SleepToNextDayCommand,
   SimCommand,
   SimEvent,
   SimPlayerState,
   SimResult,
-  SimState
+  SimState,
+  TillTileCommand,
+  WaterCropCommand
 } from "./types";
+export type {
+  CreateFarmStateOptions,
+  FarmDayTransitionChange,
+  FarmDayTransitionResult,
+  FarmTileCoordinate
+} from "./farm";
 export type {
   InventoryMutation,
   InventoryMutationKind,
