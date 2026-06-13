@@ -20,6 +20,7 @@
     "sim:30days": "node tools/scripts/sim-runner.mjs 30",
     "eval:quality": "node tools/scripts/quality-eval.mjs",
     "check:protected-files": "node tools/scripts/protected-files.mjs",
+    "check:branch-freshness": "node tools/scripts/branch-freshness.mjs",
     "check:no-test-skip": "node tools/scripts/no-test-skip.mjs",
     "check:no-quality-threshold-lowering": "node tools/scripts/no-quality-threshold-lowering.mjs"
   },
