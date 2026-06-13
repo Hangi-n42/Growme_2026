@@ -125,6 +125,8 @@ export interface ScheduleEntryContent {
   readonly endHour: number;
   readonly locationId: string;
   readonly activity: LocalizedText;
+  readonly requiredFlagIds?: readonly string[];
+  readonly blockedFlagIds?: readonly string[];
 }
 
 export interface NpcScheduleContent {
@@ -535,12 +537,12 @@ function validateResidents(
       `resident ${id}.homeLocationId`,
       context
     );
-    validateReference(
-      readString(resident, "scheduleId", `resident ${id}.scheduleId`, context),
-      collections.schedules,
-      `resident ${id}.scheduleId`,
-      context
-    );
+    const scheduleId = readString(resident, "scheduleId", `resident ${id}.scheduleId`, context);
+    validateReference(scheduleId, collections.schedules, `resident ${id}.scheduleId`, context);
+    const schedule = scheduleId === undefined ? undefined : collections.schedules.get(scheduleId);
+    if (schedule !== undefined && schedule["npcId"] !== id) {
+      context.errors.push(`resident ${id}.scheduleId references schedule ${scheduleId} owned by ${String(schedule["npcId"])}.`);
+    }
     validateResidentPreferenceProfile(resident["preferenceProfile"], `resident ${id}.preferenceProfile`, collections, context);
 
     const requestHookIds = readStringArray(resident, "requestHookIds", `resident ${id}.requestHookIds`, context, {
@@ -762,6 +764,7 @@ function validateSchedules(
         context
       );
       validateLocalizedText(entryValue["activity"], `${path}.activity`, context);
+      validateScheduleFlagConditions(entryValue, path, dayType, collections, context);
 
       if (
         dayType !== undefined &&
@@ -792,6 +795,33 @@ function validateSchedules(
         }
       }
     }
+  }
+}
+
+function validateScheduleFlagConditions(
+  entry: ContentRecord,
+  path: string,
+  dayType: string | undefined,
+  collections: ManifestCollections,
+  context: ValidationContext
+): void {
+  const requiredFlagIds = readStringArray(entry, "requiredFlagIds", `${path}.requiredFlagIds`, context);
+  const blockedFlagIds = readStringArray(entry, "blockedFlagIds", `${path}.blockedFlagIds`, context);
+
+  validateReferences(requiredFlagIds, collections.flags, `${path}.requiredFlagIds`, context);
+  validateReferences(blockedFlagIds, collections.flags, `${path}.blockedFlagIds`, context);
+  validateUniqueStrings(requiredFlagIds, `${path}.requiredFlagIds`, context);
+  validateUniqueStrings(blockedFlagIds, `${path}.blockedFlagIds`, context);
+
+  const blockedFlagSet = new Set(blockedFlagIds);
+  for (const flagId of requiredFlagIds) {
+    if (blockedFlagSet.has(flagId)) {
+      context.errors.push(`${path} cannot both require and block flag: ${flagId}.`);
+    }
+  }
+
+  if (dayType === "story" && requiredFlagIds.length === 0) {
+    context.errors.push(`${path}.requiredFlagIds must not be empty for story schedule overrides.`);
   }
 }
 

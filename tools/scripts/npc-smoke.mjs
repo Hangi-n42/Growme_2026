@@ -41,12 +41,17 @@ runCheck("v0.1 NPC profiles are authored, linked, and meet scaffold minimum", ()
     residentNames.add(resident.displayName.text);
 
     requireReference(resident.homeLocationId, collections.locations, `resident ${residentId}.homeLocationId`);
-    requireReference(resident.scheduleId, collections.schedules, `resident ${residentId}.scheduleId`);
+    const schedule = requireReference(resident.scheduleId, collections.schedules, `resident ${residentId}.scheduleId`);
+    if (schedule.npcId !== residentId) {
+      throw new Error(`resident ${residentId}.scheduleId references schedule ${resident.scheduleId} owned by ${schedule.npcId}.`);
+    }
     validatePreferenceProfile(resident.preferenceProfile, residentId, collections);
     validateOwnedContracts(resident.requestHookIds, residentId, collections);
     validateOwnedMilestones(resident.relationshipHookIds, residentId, collections);
     validateMemoryFlags(resident.memoryFlagIds, residentId, collections);
     validateOwnedShops(resident.shopIds, residentId, collections);
+    validateScheduleCoverage(schedule, collections);
+    validateShopScheduleAvailability(resident, schedule, collections);
     validateStoryParticipation(resident.storyParticipation, residentId, collections);
   }
 });
@@ -109,6 +114,62 @@ function validateOwnedShops(shopIds, residentId, collections) {
     const shop = requireReference(shopId, collections.shops, `resident ${residentId}.shopIds`);
     if (shop.ownerNpcId !== residentId) {
       throw new Error(`resident ${residentId}.shopIds references shop ${shopId} owned by ${shop.ownerNpcId}.`);
+    }
+  }
+}
+
+function validateScheduleCoverage(schedule, collections) {
+  if (!Array.isArray(schedule.entries) || schedule.entries.length === 0) {
+    throw new Error(`schedule ${schedule.id}.entries must be a non-empty array.`);
+  }
+
+  const coverageByDayType = new Map();
+  for (const [index, entry] of schedule.entries.entries()) {
+    const path = `schedule ${schedule.id}.entries[${index}]`;
+    if (!isRecord(entry)) {
+      throw new Error(`${path} must be an object.`);
+    }
+
+    if (!["weekday", "weekend", "rain", "story"].includes(entry.dayType)) {
+      throw new Error(`${path}.dayType must be one of weekday, weekend, rain, story.`);
+    }
+
+    requireHourRange(entry, path);
+    requireReference(entry.locationId, collections.locations, `${path}.locationId`);
+    validateLocalizedText(entry.activity, `${path}.activity`);
+
+    if (entry.dayType !== "weekday" && entry.dayType !== "weekend") {
+      continue;
+    }
+
+    const coverage = coverageByDayType.get(entry.dayType) ?? Array.from({ length: 24 }, () => 0);
+    for (let hour = entry.startHour; hour < entry.endHour; hour += 1) {
+      coverage[hour] += 1;
+    }
+    coverageByDayType.set(entry.dayType, coverage);
+  }
+
+  for (const dayType of ["weekday", "weekend"]) {
+    const coverage = coverageByDayType.get(dayType);
+    if (!coverage) {
+      throw new Error(`schedule ${schedule.id} must include ${dayType} coverage for every hour.`);
+    }
+
+    for (let hour = 0; hour < 24; hour += 1) {
+      if (coverage[hour] !== 1) {
+        throw new Error(`schedule ${schedule.id} ${dayType} hour ${hour} must resolve to exactly one location.`);
+      }
+    }
+  }
+}
+
+function validateShopScheduleAvailability(resident, schedule, collections) {
+  for (const shopId of resident.shopIds) {
+    const shop = requireReference(shopId, collections.shops, `resident ${resident.id}.shopIds`);
+    const shopEntries = schedule.entries.filter((entry) => entry.locationId === shop.locationId);
+
+    if (shopEntries.length === 0) {
+      throw new Error(`resident ${resident.id} schedule ${schedule.id} never visits shop ${shopId} at ${shop.locationId}.`);
     }
   }
 }
@@ -196,6 +257,20 @@ function requireRecordArray(values, path) {
   }
 
   return values;
+}
+
+function requireHourRange(entry, path) {
+  if (!Number.isInteger(entry.startHour) || entry.startHour < 0 || entry.startHour > 23) {
+    throw new Error(`${path}.startHour must be an integer from 0 to 23.`);
+  }
+
+  if (!Number.isInteger(entry.endHour) || entry.endHour < 1 || entry.endHour > 24) {
+    throw new Error(`${path}.endHour must be an integer from 1 to 24.`);
+  }
+
+  if (entry.startHour >= entry.endHour) {
+    throw new Error(`${path}.startHour must be less than endHour.`);
+  }
 }
 
 function rejectDuplicates(values, path) {

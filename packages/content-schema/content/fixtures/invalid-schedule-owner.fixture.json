@@ -1,0 +1,7 @@
+{
+  "description": "Resident schedule IDs must point to schedules owned by that resident.",
+  "patches": [
+    { "op": "replace", "path": ["residents", 0, "scheduleId"], "value": "oren_clay_schedule" }
+  ],
+  "expectedErrors": ["resident nia_moss.scheduleId references schedule oren_clay_schedule owned by oren_clay"]
+}

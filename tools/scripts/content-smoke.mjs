@@ -239,7 +239,10 @@ function validateResidents(collections, errors, localizedKeys) {
     validateLocalizedText(resident.displayName, `resident ${id}.displayName`, errors, localizedKeys);
     validateLocalizedText(resident.job, `resident ${id}.job`, errors, localizedKeys);
     requireReference(resident.homeLocationId, collections.locations, `resident ${id}.homeLocationId`, errors);
-    requireReference(resident.scheduleId, collections.schedules, `resident ${id}.scheduleId`, errors);
+    const schedule = requireReference(resident.scheduleId, collections.schedules, `resident ${id}.scheduleId`, errors);
+    if (schedule && schedule.npcId !== id) {
+      errors.push(`resident ${id}.scheduleId references schedule ${resident.scheduleId} owned by ${schedule.npcId}.`);
+    }
     validateResidentPreferenceProfile(resident.preferenceProfile, `resident ${id}.preferenceProfile`, collections, errors);
     for (const contractId of requireStringArray(resident.requestHookIds, `resident ${id}.requestHookIds`, errors)) {
       const contract = requireReference(contractId, collections.contracts, `resident ${id}.requestHookIds`, errors);
@@ -342,6 +345,10 @@ function validateSchedules(collections, errors, localizedKeys) {
 
       requireReference(entry.locationId, collections.locations, `${path}.locationId`, errors);
       validateLocalizedText(entry.activity, `${path}.activity`, errors, localizedKeys);
+      validateScheduleFlagConditions(entry, path, collections, errors);
+      if (entry.dayType === "story" && optionalStringArray(entry.requiredFlagIds, `${path}.requiredFlagIds`, errors).length === 0) {
+        errors.push(`${path}.requiredFlagIds must not be empty for story schedule overrides.`);
+      }
 
       if (
         (entry.dayType === "weekday" || entry.dayType === "weekend") &&
@@ -371,6 +378,29 @@ function validateSchedules(collections, errors, localizedKeys) {
           errors.push(`schedule ${id} ${dayType} hour ${hour} must resolve to exactly one location.`);
         }
       }
+    }
+  }
+}
+
+function validateScheduleFlagConditions(entry, path, collections, errors) {
+  const requiredFlagIds = optionalStringArray(entry.requiredFlagIds, `${path}.requiredFlagIds`, errors);
+  const blockedFlagIds = optionalStringArray(entry.blockedFlagIds, `${path}.blockedFlagIds`, errors);
+
+  validateUniqueStrings(requiredFlagIds, `${path}.requiredFlagIds`, errors);
+  validateUniqueStrings(blockedFlagIds, `${path}.blockedFlagIds`, errors);
+
+  for (const flagId of requiredFlagIds) {
+    requireReference(flagId, collections.flags, `${path}.requiredFlagIds`, errors);
+  }
+
+  for (const flagId of blockedFlagIds) {
+    requireReference(flagId, collections.flags, `${path}.blockedFlagIds`, errors);
+  }
+
+  const blockedFlagSet = new Set(blockedFlagIds);
+  for (const flagId of requiredFlagIds) {
+    if (blockedFlagSet.has(flagId)) {
+      errors.push(`${path} cannot both require and block flag: ${flagId}.`);
     }
   }
 }
