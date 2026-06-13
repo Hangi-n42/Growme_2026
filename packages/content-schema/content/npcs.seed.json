@@ -114,7 +114,7 @@
       "id": "repair_plank",
       "displayName": { "key": "item.repair_plank", "text": "Repair Plank" },
       "category": "crafted",
-      "basePrice": 30,
+      "basePrice": 29,
       "rarity": "common",
       "stackLimit": 50,
       "vendor": { "buyable": true, "sellable": true }

@@ -1,0 +1,9 @@
+{
+  "description": "Recipe output value must stay within approved ROI bounds.",
+  "patches": [
+    { "op": "replace", "path": ["items", 6, "basePrice"], "value": 80 }
+  ],
+  "expectedErrors": [
+    "recipe repair_plank_recipe output/input base price ROI"
+  ]
+}
