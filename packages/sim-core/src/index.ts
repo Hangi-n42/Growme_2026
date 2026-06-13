@@ -1,4 +1,15 @@
 export { applyCommand, reduceGameCommand } from "./commands";
+export {
+  MAX_WALLET_BALANCE,
+  addInventoryItem,
+  applyPlayerTransaction,
+  creditWalletCurrency,
+  debitWalletCurrency,
+  getItemQuantity,
+  hasInventoryItem,
+  hasWalletCurrency,
+  removeInventoryItem
+} from "./inventory";
 export { replayCommands } from "./replay";
 export { createInitialGameState, createInitialState } from "./state";
 export {
@@ -71,3 +82,17 @@ export type {
   SimResult,
   SimState
 } from "./types";
+export type {
+  InventoryMutation,
+  InventoryMutationKind,
+  ItemQuantityMutation,
+  ItemStackLimitLookup,
+  PlayerTransaction,
+  PlayerTransactionFailure,
+  PlayerTransactionFailureCode,
+  PlayerTransactionFailureResult,
+  PlayerTransactionResult,
+  PlayerTransactionSuccessResult,
+  WalletMutation,
+  WalletMutationKind
+} from "./inventory";
