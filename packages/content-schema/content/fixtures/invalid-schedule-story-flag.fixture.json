@@ -1,0 +1,21 @@
+{
+  "description": "Story schedule overrides must reference valid gating flags.",
+  "patches": [
+    {
+      "op": "replace",
+      "path": ["schedules", 0, "entries", 0],
+      "value": {
+        "dayType": "story",
+        "startHour": 0,
+        "endHour": 8,
+        "locationId": "nia_home",
+        "activity": {
+          "key": "schedule.nia.story.bad_flag",
+          "text": "Following a story lead before opening the seed stand"
+        },
+        "requiredFlagIds": ["missing_story_flag"]
+      }
+    }
+  ],
+  "expectedErrors": ["schedule nia_moss_schedule.entries[0].requiredFlagIds references unknown id: missing_story_flag"]
+}

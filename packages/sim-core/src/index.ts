@@ -31,6 +31,14 @@ export {
 } from "./inventory";
 export { replayCommands } from "./replay";
 export {
+  NPC_SCHEDULE_DAY_TYPES,
+  getNpcScheduleBaseDayType,
+  isNpcWeekendDay,
+  resolveNpcSchedule,
+  resolveNpcShopAvailability,
+  validateNpcScheduleCoverage
+} from "./npcSchedules";
+export {
   createInitialContractsState,
   createInitialDecorState,
   createInitialGameState,
@@ -163,6 +171,24 @@ export type {
   TillTileCommand,
   WaterCropCommand
 } from "./types";
+export type {
+  NpcBaseScheduleDayType,
+  NpcScheduleCoverageIssue,
+  NpcScheduleCoverageOptions,
+  NpcScheduleDayType,
+  NpcScheduleDefinition,
+  NpcScheduleEntryDefinition,
+  NpcScheduleResolution,
+  NpcScheduleResolutionContext,
+  NpcScheduleResolutionFailure,
+  NpcScheduleResolutionFailureCode,
+  NpcScheduleResolutionResult,
+  NpcScheduleWeather,
+  NpcShopAvailability,
+  NpcShopAvailabilityFailure,
+  NpcShopAvailabilityResult,
+  NpcShopScheduleDefinition
+} from "./npcSchedules";
 export type {
   DeserializeStateOptions,
   SaveLoadResult,

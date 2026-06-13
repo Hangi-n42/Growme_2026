@@ -46,7 +46,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/sim-core
 
-  tools/npc-sim: {}
+  tools/npc-sim:
+    dependencies:
+      '@growme/sim-core':
+        specifier: workspace:*
+        version: link:../../packages/sim-core
 
   tools/quality-eval: {}
 
