@@ -6,7 +6,14 @@ import {
   DEFAULT_MAX_ENERGY,
   DEFAULT_START_MINUTE,
   GAME_STATE_VERSION,
-  type GameState
+  type ContractsState,
+  type DecorState,
+  type GameState,
+  type MineState,
+  type NpcMemoryState,
+  type RelationshipsState,
+  type ShopsState,
+  type StoryState
 } from "./types";
 
 export interface CreateInitialStateOptions {
@@ -33,6 +40,13 @@ export function createInitialGameState(options: CreateInitialStateOptions): Game
       inventory: {}
     },
     farm: createInitialFarmState(),
+    mine: createInitialMineState(time.day),
+    shops: createInitialShopsState(),
+    contracts: createInitialContractsState(),
+    npcs: createInitialNpcMemoryState(),
+    relationships: createInitialRelationshipsState(),
+    story: createInitialStoryState(),
+    decor: createInitialDecorState(),
     flags: [],
     eventLog: [],
     auditLog: [],
@@ -44,3 +58,57 @@ export function createInitialGameState(options: CreateInitialStateOptions): Game
 }
 
 export const createInitialState = createInitialGameState;
+
+export function createInitialMineState(day: number): MineState {
+  return {
+    deepestFloorReached: 1,
+    daily: {
+      day,
+      floor: 1,
+      depletedNodeIds: [],
+      exitRevealed: false
+    }
+  };
+}
+
+export function createInitialShopsState(): ShopsState {
+  return {
+    shops: []
+  };
+}
+
+export function createInitialContractsState(): ContractsState {
+  return {
+    active: [],
+    completedIds: [],
+    cooldowns: []
+  };
+}
+
+export function createInitialNpcMemoryState(): NpcMemoryState {
+  return {
+    metNpcIds: [],
+    memoryFlags: []
+  };
+}
+
+export function createInitialRelationshipsState(): RelationshipsState {
+  return {
+    affinity: [],
+    dailyGains: [],
+    milestoneFlags: []
+  };
+}
+
+export function createInitialStoryState(): StoryState {
+  return {
+    completedEventIds: [],
+    flags: []
+  };
+}
+
+export function createInitialDecorState(): DecorState {
+  return {
+    placements: []
+  };
+}

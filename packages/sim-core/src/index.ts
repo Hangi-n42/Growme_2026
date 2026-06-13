@@ -30,7 +30,17 @@ export {
   removeInventoryItem
 } from "./inventory";
 export { replayCommands } from "./replay";
-export { createInitialGameState, createInitialState } from "./state";
+export {
+  createInitialContractsState,
+  createInitialDecorState,
+  createInitialGameState,
+  createInitialMineState,
+  createInitialNpcMemoryState,
+  createInitialRelationshipsState,
+  createInitialShopsState,
+  createInitialState,
+  createInitialStoryState
+} from "./state";
 export {
   didCommandCrossIntoNewDay,
   didTimeAdvanceCrossIntoNewDay,
@@ -54,7 +64,15 @@ export {
   validateTimeAdvanceMinutes
 } from "./time";
 export { createSeedState, hashSeed, nextRandom, nextRandomInt } from "./rng";
-export { deserializeState, serializeState } from "./save";
+export {
+  SaveValidationError,
+  createSaveSnapshot,
+  deserializeState,
+  migrateSaveSnapshot,
+  serializeState,
+  tryDeserializeState,
+  validateSaveSnapshot
+} from "./save";
 export {
   DEFAULT_CONTENT_VERSION,
   DEFAULT_MAX_ENERGY,
@@ -63,6 +81,7 @@ export {
   GAME_EVENT_TYPES,
   GAME_STATE_VERSION,
   MAX_TIME_ADVANCE_MINUTES,
+  SAVE_SCHEMA_VERSION,
   TIME_PHASES,
   MINUTES_PER_DAY
 } from "./types";
@@ -77,8 +96,14 @@ export type {
   CommandLogState,
   CommandSuccessResult,
   ClearTileCommand,
+  ContractCooldownState,
+  ContractRuntimeState,
+  ContractRuntimeStatus,
+  ContractsState,
   CropDefinition,
   CropId,
+  DecorPlacementState,
+  DecorState,
   FarmState,
   FarmTile,
   FarmTileState,
@@ -89,6 +114,7 @@ export type {
   GameEventCategory,
   GameEventId,
   GameEventType,
+  GameSaveSnapshot,
   GameState,
   GameTime,
   GameTimePhase,
@@ -104,22 +130,38 @@ export type {
   LegacySleepToNextDayCommand,
   LegacyTillTileCommand,
   LegacyWaterCropCommand,
+  MineDailyState,
+  MineState,
   NoopCommand,
+  NpcMemoryState,
   NpcId,
   PlantCropCommand,
   PlayerState,
   PostHarvestTileState,
+  RelationshipAffinityState,
+  RelationshipDailyGainState,
+  RelationshipsState,
   SeedState,
   HarvestCropCommand,
+  ShopRuntimeState,
+  ShopsState,
   SleepToNextDayCommand,
   SimCommand,
   SimEvent,
   SimPlayerState,
   SimResult,
   SimState,
+  StoryState,
   TillTileCommand,
   WaterCropCommand
 } from "./types";
+export type {
+  DeserializeStateOptions,
+  SaveLoadResult,
+  SaveMigrationResult,
+  SaveValidationIssue,
+  SaveValidationResult
+} from "./save";
 export type {
   CreateFarmStateOptions,
   FarmDayTransitionChange,

@@ -1,4 +1,5 @@
 export const GAME_STATE_VERSION = 1;
+export const SAVE_SCHEMA_VERSION = 1;
 export const DEFAULT_CONTENT_VERSION = "v0.1-foundation";
 export const MINUTES_PER_DAY = 1440;
 export const DEFAULT_START_MINUTE = 6 * 60;
@@ -105,6 +106,91 @@ export interface FarmState {
   readonly cropDefinitions: readonly CropDefinition[];
 }
 
+export interface MineDailyState {
+  readonly day: number;
+  readonly floor: number;
+  readonly depletedNodeIds: readonly string[];
+  readonly exitRevealed: boolean;
+}
+
+export interface MineState {
+  readonly deepestFloorReached: number;
+  readonly daily: MineDailyState;
+}
+
+export interface ShopRuntimeState {
+  readonly shopId: string;
+  readonly stock: Inventory;
+  readonly budget: number;
+  readonly nextRestockDay: number;
+}
+
+export interface ShopsState {
+  readonly shops: readonly ShopRuntimeState[];
+}
+
+export type ContractRuntimeStatus = "active" | "completed" | "expired";
+
+export interface ContractRuntimeState {
+  readonly contractId: string;
+  readonly requesterId: NpcId;
+  readonly status: ContractRuntimeStatus;
+  readonly acceptedDay: number;
+  readonly deadlineDay: number;
+  readonly progress: number;
+}
+
+export interface ContractCooldownState {
+  readonly contractId: string;
+  readonly availableDay: number;
+}
+
+export interface ContractsState {
+  readonly active: readonly ContractRuntimeState[];
+  readonly completedIds: readonly string[];
+  readonly cooldowns: readonly ContractCooldownState[];
+}
+
+export interface NpcMemoryState {
+  readonly metNpcIds: readonly NpcId[];
+  readonly memoryFlags: readonly string[];
+}
+
+export interface RelationshipAffinityState {
+  readonly npcId: NpcId;
+  readonly affinity: number;
+}
+
+export interface RelationshipDailyGainState {
+  readonly npcId: NpcId;
+  readonly day: number;
+  readonly amount: number;
+}
+
+export interface RelationshipsState {
+  readonly affinity: readonly RelationshipAffinityState[];
+  readonly dailyGains: readonly RelationshipDailyGainState[];
+  readonly milestoneFlags: readonly string[];
+}
+
+export interface StoryState {
+  readonly completedEventIds: readonly string[];
+  readonly flags: readonly string[];
+}
+
+export interface DecorPlacementState {
+  readonly placementId: string;
+  readonly itemId: ItemId;
+  readonly areaId: string;
+  readonly x: number;
+  readonly y: number;
+  readonly rotation: 0 | 90 | 180 | 270;
+}
+
+export interface DecorState {
+  readonly placements: readonly DecorPlacementState[];
+}
+
 export type GameEventCategory = "command" | "system" | "time" | "farm";
 
 export interface GameEvent {
@@ -147,10 +233,25 @@ export interface GameState {
   readonly minute: number;
   readonly player: PlayerState;
   readonly farm: FarmState;
+  readonly mine: MineState;
+  readonly shops: ShopsState;
+  readonly contracts: ContractsState;
+  readonly npcs: NpcMemoryState;
+  readonly relationships: RelationshipsState;
+  readonly story: StoryState;
+  readonly decor: DecorState;
   readonly flags: readonly string[];
   readonly eventLog: readonly GameEvent[];
   readonly auditLog: readonly AuditEvent[];
   readonly commandLog: CommandLogState;
+}
+
+export interface GameSaveSnapshot {
+  readonly schemaVersion: typeof SAVE_SCHEMA_VERSION;
+  readonly stateVersion: typeof GAME_STATE_VERSION;
+  readonly contentVersion: string;
+  readonly commandLogPointer: number;
+  readonly state: GameState;
 }
 
 export type GameCommandType =
