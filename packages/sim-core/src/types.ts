@@ -16,6 +16,7 @@ export const TIME_PHASES = {
 export const GAME_EVENT_TYPES = {
   COMMAND_NOOP: "COMMAND_NOOP",
   COMMAND_FAILED: "COMMAND_FAILED",
+  CRAFT_RECIPE_COMPLETED: "CRAFT_RECIPE_COMPLETED",
   TIME_ADVANCED: "TIME_ADVANCED",
   DAY_STARTED: "DAY_STARTED",
   FARM_TILE_TILLED: "FARM_TILE_TILLED",
@@ -44,6 +45,38 @@ export type GameEventType = (typeof GAME_EVENT_TYPES)[keyof typeof GAME_EVENT_TY
 
 export interface Inventory {
   readonly [itemId: ItemId]: number;
+}
+
+export interface ItemQuantity {
+  readonly itemId: ItemId;
+  readonly quantity: number;
+}
+
+export interface ItemStackLimits {
+  readonly [itemId: ItemId]: number;
+}
+
+export interface RecipeDefinition {
+  readonly id: string;
+  readonly category: string;
+  readonly inputs: readonly ItemQuantity[];
+  readonly outputs: readonly ItemQuantity[];
+  readonly craftMinutes: number;
+  readonly unlockFlagIds?: readonly string[];
+}
+
+export interface GameContentState {
+  readonly itemStackLimits: ItemStackLimits;
+  readonly recipes: readonly RecipeDefinition[];
+}
+
+export const EMPTY_GAME_CONTENT: GameContentState = {
+  itemStackLimits: {},
+  recipes: []
+};
+
+export interface GameCommandContext {
+  readonly content?: GameContentState;
 }
 
 export interface GameTime {
@@ -262,7 +295,8 @@ export type GameCommandType =
   | "PLANT_CROP"
   | "WATER_CROP"
   | "HARVEST_CROP"
-  | "CLEAR_TILE";
+  | "CLEAR_TILE"
+  | "CRAFT_RECIPE";
 
 export interface NoopCommand {
   readonly type: "NOOP";
@@ -348,6 +382,18 @@ export interface LegacyClearTileCommand {
   readonly y: number;
 }
 
+export interface CraftRecipeCommand {
+  readonly type: "CRAFT_RECIPE";
+  readonly recipeId: string;
+  readonly quantity?: number;
+}
+
+export interface LegacyCraftRecipeCommand {
+  readonly type: "craftRecipe";
+  readonly recipeId: string;
+  readonly quantity?: number;
+}
+
 export type GameCommand =
   | NoopCommand
   | AdvanceTimeCommand
@@ -363,7 +409,9 @@ export type GameCommand =
   | HarvestCropCommand
   | LegacyHarvestCropCommand
   | ClearTileCommand
-  | LegacyClearTileCommand;
+  | LegacyClearTileCommand
+  | CraftRecipeCommand
+  | LegacyCraftRecipeCommand;
 
 export type CommandFailureCode =
   | "UNKNOWN_COMMAND"
@@ -382,7 +430,13 @@ export type CommandFailureCode =
   | "INVALID_SEED_ITEM"
   | "INSUFFICIENT_ENERGY"
   | "INVENTORY_TRANSACTION_FAILED"
-  | "CROP_NOT_READY";
+  | "CROP_NOT_READY"
+  | "INVALID_RECIPE_ID"
+  | "UNKNOWN_RECIPE"
+  | "INVALID_CRAFT_QUANTITY"
+  | "INVALID_RECIPE_DEFINITION"
+  | "RECIPE_LOCKED"
+  | "CRAFT_TRANSACTION_FAILED";
 
 export interface CommandFailure {
   readonly code: CommandFailureCode;

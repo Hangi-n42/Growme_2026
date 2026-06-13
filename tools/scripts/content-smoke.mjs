@@ -23,6 +23,11 @@ const vendorBounds = {
   sellMax: 1.5
 };
 
+const recipeRoiBounds = {
+  min: 0.75,
+  max: 1.15
+};
+
 runCheck("content schema package exports runtime validation", () => {
   const source = readText("packages/content-schema/src/index.ts");
   for (const expected of [
@@ -181,7 +186,52 @@ function validateRecipes(collections, errors, localizedKeys) {
     validateLocalizedText(recipe.displayName, `recipe ${id}.displayName`, errors, localizedKeys);
     validateItemQuantities(recipe.inputs, `recipe ${id}.inputs`, collections.items, errors);
     validateItemQuantities(recipe.outputs, `recipe ${id}.outputs`, collections.items, errors);
+    validateRecipeValueBounds(id, recipe, collections.items, errors);
   }
+}
+
+function validateRecipeValueBounds(recipeId, recipe, items, errors) {
+  const inputValue = calculateItemQuantityValue(recipe.inputs, items);
+  const outputValue = calculateItemQuantityValue(recipe.outputs, items);
+
+  if (inputValue === undefined || outputValue === undefined) {
+    return;
+  }
+
+  const roi = outputValue / inputValue;
+  if (roi < recipeRoiBounds.min || roi > recipeRoiBounds.max) {
+    errors.push(
+      `recipe ${recipeId} output/input base price ROI ${roi.toFixed(2)} must be between ` +
+        `${recipeRoiBounds.min.toFixed(2)} and ${recipeRoiBounds.max.toFixed(2)}.`
+    );
+  }
+}
+
+function calculateItemQuantityValue(values, items) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return undefined;
+  }
+
+  let total = 0;
+
+  for (const value of values) {
+    if (!isRecord(value)) {
+      return undefined;
+    }
+
+    if (typeof value.itemId !== "string" || !Number.isInteger(value.quantity) || value.quantity <= 0) {
+      return undefined;
+    }
+
+    const item = items.get(value.itemId);
+    if (!item || !Number.isInteger(item.basePrice) || item.basePrice <= 0) {
+      return undefined;
+    }
+
+    total += item.basePrice * value.quantity;
+  }
+
+  return total;
 }
 
 function validateResidents(collections, errors, localizedKeys) {

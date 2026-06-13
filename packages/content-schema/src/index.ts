@@ -15,6 +15,8 @@ export const VENDOR_BUY_MULTIPLIER_MIN = 0.35;
 export const VENDOR_BUY_MULTIPLIER_MAX = 0.6;
 export const VENDOR_SELL_MULTIPLIER_MIN = 1;
 export const VENDOR_SELL_MULTIPLIER_MAX = 1.5;
+export const CRAFTED_ITEM_ROI_DEFAULT_MIN = 0.75;
+export const CRAFTED_ITEM_ROI_DEFAULT_MAX = 1.15;
 
 const CONTENT_ID_PATTERN = /^[a-z][a-z0-9_]*$/u;
 const CONTENT_VERSION_PATTERN = /^v0\.1-[a-z0-9-]+$/u;
@@ -456,10 +458,67 @@ function validateRecipes(
     readIntegerInRange(recipe, "craftMinutes", `recipe ${id}.craftMinutes`, 0, 24 * 60, context);
     validateItemQuantities(recipe["inputs"], `recipe ${id}.inputs`, collections.items, context, { allowEmpty: false });
     validateItemQuantities(recipe["outputs"], `recipe ${id}.outputs`, collections.items, context, { allowEmpty: false });
+    validateRecipeValueBounds(id, recipe, collections.items, context);
 
     const unlockFlagIds = readStringArray(recipe, "unlockFlagIds", `recipe ${id}.unlockFlagIds`, context);
     validateReferences(unlockFlagIds, collections.flags, `recipe ${id}.unlockFlagIds`, context);
   }
+}
+
+function validateRecipeValueBounds(
+  recipeId: string,
+  recipe: ContentRecord,
+  items: Map<string, ContentRecord>,
+  context: ValidationContext
+): void {
+  const inputValue = calculateItemQuantityValue(recipe["inputs"], items);
+  const outputValue = calculateItemQuantityValue(recipe["outputs"], items);
+
+  if (inputValue === undefined || outputValue === undefined) {
+    return;
+  }
+
+  const roi = outputValue / inputValue;
+  if (roi < CRAFTED_ITEM_ROI_DEFAULT_MIN || roi > CRAFTED_ITEM_ROI_DEFAULT_MAX) {
+    context.errors.push(
+      `recipe ${recipeId} output/input base price ROI ${roi.toFixed(2)} must be between ` +
+        `${CRAFTED_ITEM_ROI_DEFAULT_MIN.toFixed(2)} and ${CRAFTED_ITEM_ROI_DEFAULT_MAX.toFixed(2)}.`
+    );
+  }
+}
+
+function calculateItemQuantityValue(
+  value: unknown,
+  items: Map<string, ContentRecord>
+): number | undefined {
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
+  }
+
+  let total = 0;
+
+  for (const itemQuantityValue of value) {
+    if (!isRecord(itemQuantityValue)) {
+      return undefined;
+    }
+
+    const itemId = itemQuantityValue["itemId"];
+    const quantity = itemQuantityValue["quantity"];
+
+    if (typeof itemId !== "string" || typeof quantity !== "number" || !Number.isInteger(quantity) || quantity <= 0) {
+      return undefined;
+    }
+
+    const item = items.get(itemId);
+    const basePrice = item?.["basePrice"];
+    if (typeof basePrice !== "number" || !Number.isInteger(basePrice) || basePrice <= 0) {
+      return undefined;
+    }
+
+    total += basePrice * quantity;
+  }
+
+  return total;
 }
 
 function validateResidents(

@@ -20,35 +20,53 @@ import {
   replaceFarmTile,
   type FarmDayTransitionChange
 } from "./farm";
-import { applyPlayerTransaction } from "./inventory";
+import { applyPlayerTransaction, type InventoryMutation } from "./inventory";
 import type {
   AuditEvent,
   AuditEventType,
   CommandFailure,
   CommandFailureCode,
   GameCommand,
+  GameCommandContext,
   GameCommandResult,
   GameCommandType,
+  GameContentState,
   GameEvent,
   GameEventCategory,
   GameState,
   GameTime,
-  JsonObject,
   CropDefinition,
-  FarmTile
+  FarmTile,
+  ItemQuantity,
+  JsonObject,
+  RecipeDefinition
 } from "./types";
-import { DEFAULT_MAX_ENERGY, FARM_TILE_STATES, GAME_EVENT_TYPES, MINUTES_PER_DAY } from "./types";
+import {
+  DEFAULT_MAX_ENERGY,
+  EMPTY_GAME_CONTENT,
+  FARM_TILE_STATES,
+  GAME_EVENT_TYPES,
+  MINUTES_PER_DAY
+} from "./types";
 
 type CommandRecord = {
   readonly type: string;
   readonly [key: string]: unknown;
 };
 
-export function applyCommand(state: GameState, command: unknown): GameCommandResult {
-  return reduceGameCommand(state, command);
+export function applyCommand(
+  state: GameState,
+  command: unknown,
+  context: GameCommandContext = {}
+): GameCommandResult {
+  return reduceGameCommand(state, command, context);
 }
 
-export function reduceGameCommand(state: GameState, command: unknown): GameCommandResult {
+export function reduceGameCommand(
+  state: GameState,
+  command: unknown,
+  context: GameCommandContext = {}
+): GameCommandResult {
   if (!isCommandRecord(command)) {
     return failCommand(state, command, {
       code: "INVALID_COMMAND_SHAPE",
@@ -86,6 +104,8 @@ export function reduceGameCommand(state: GameState, command: unknown): GameComma
       return harvestCrop(state, command);
     case "CLEAR_TILE":
       return clearTile(state, command);
+    case "CRAFT_RECIPE":
+      return craftRecipe(state, command, context.content ?? EMPTY_GAME_CONTENT);
   }
 }
 
@@ -193,6 +213,75 @@ function sleepToNextDay(state: GameState, command: CommandRecord): GameCommandRe
     ...events,
     ...farmEvents
   ]);
+}
+
+type TimedCommandStateResult =
+  | {
+      readonly ok: true;
+      readonly state: GameState;
+      readonly events: readonly GameEvent[];
+    }
+  | {
+      readonly ok: false;
+      readonly failure: Pick<CommandFailure, "code" | "message">;
+    };
+
+function advanceStateTimeForCommand(
+  state: GameState,
+  startTime: GameTime,
+  minutes: number,
+  commandType: GameCommandType,
+  reason: string
+): TimedCommandStateResult {
+  if (minutes === 0) {
+    return {
+      ok: true,
+      state,
+      events: []
+    };
+  }
+
+  const validationFailure = validateTimeAdvanceMinutes(minutes);
+  if (validationFailure !== undefined) {
+    return {
+      ok: false,
+      failure: validationFailure
+    };
+  }
+
+  if (!Number.isSafeInteger(startTime.elapsedMinutes + minutes)) {
+    return {
+      ok: false,
+      failure: {
+        code: "TIME_ADVANCE_OVERFLOW",
+        message: `${commandType} would exceed safe elapsed minute bounds.`
+      }
+    };
+  }
+
+  const time = advanceGameTime(startTime, minutes);
+  const crossedDays = getCrossedDayNumbers(startTime, time);
+  const farmTransition = advanceFarmByCrossedDays(state.farm, crossedDays);
+  const timedState = withGameTime(
+    {
+      ...state,
+      farm: farmTransition.farm
+    },
+    time
+  );
+  const events = createTimeAdvanceEvents(state, startTime, time, commandType, minutes, reason);
+  const farmEvents = createFarmTransitionEvents(
+    state,
+    commandType,
+    farmTransition.changes,
+    events.length
+  );
+
+  return {
+    ok: true,
+    state: timedState,
+    events: [...events, ...farmEvents]
+  };
 }
 
 function tillTile(state: GameState, command: CommandRecord): GameCommandResult {
@@ -532,6 +621,278 @@ function clearTile(state: GameState, command: CommandRecord): GameCommandResult 
   ]);
 }
 
+function craftRecipe(
+  state: GameState,
+  command: CommandRecord,
+  content: GameContentState
+): GameCommandResult {
+  const recipeId = typeof command.recipeId === "string" ? command.recipeId.trim() : "";
+
+  if (recipeId.length === 0) {
+    return failCommand(state, command, {
+      code: "INVALID_RECIPE_ID",
+      commandType: "CRAFT_RECIPE",
+      message: "CRAFT_RECIPE requires a non-empty recipeId.",
+      payload: {}
+    });
+  }
+
+  const rawQuantity = command.quantity;
+  if (
+    rawQuantity !== undefined &&
+    (typeof rawQuantity !== "number" || !Number.isSafeInteger(rawQuantity) || rawQuantity <= 0)
+  ) {
+    return failCommand(state, command, {
+      code: "INVALID_CRAFT_QUANTITY",
+      commandType: "CRAFT_RECIPE",
+      message: "CRAFT_RECIPE quantity must be a positive safe integer.",
+      payload: { recipeId, receivedQuantity: String(rawQuantity) }
+    });
+  }
+  const quantity = rawQuantity ?? 1;
+
+  const recipe = content.recipes.find((candidate) => candidate.id === recipeId);
+  if (recipe === undefined) {
+    return failCommand(state, command, {
+      code: "UNKNOWN_RECIPE",
+      commandType: "CRAFT_RECIPE",
+      message: `Unknown recipe id: ${recipeId}.`,
+      payload: { recipeId }
+    });
+  }
+
+  const definitionFailure = validateRecipeDefinition(
+    recipe,
+    quantity,
+    content.itemStackLimits
+  );
+  if (definitionFailure !== undefined) {
+    return failCommand(state, command, {
+      code: "INVALID_RECIPE_DEFINITION",
+      commandType: "CRAFT_RECIPE",
+      message: definitionFailure.message,
+      payload: {
+        recipeId,
+        reason: definitionFailure.reason
+      }
+    });
+  }
+
+  const missingUnlockFlag = recipe.unlockFlagIds?.find((flagId) => !state.flags.includes(flagId));
+  if (missingUnlockFlag !== undefined) {
+    return failCommand(state, command, {
+      code: "RECIPE_LOCKED",
+      commandType: "CRAFT_RECIPE",
+      message: `Recipe ${recipeId} is locked by missing flag ${missingUnlockFlag}.`,
+      payload: {
+        recipeId,
+        missingUnlockFlag
+      }
+    });
+  }
+
+  const inventoryMutations = createCraftInventoryMutations(recipe, quantity);
+  const transaction = applyPlayerTransaction(
+    state.player,
+    {
+      inventory: inventoryMutations
+    },
+    content.itemStackLimits
+  );
+
+  if (!transaction.ok) {
+    return failCommand(state, command, {
+      code: "CRAFT_TRANSACTION_FAILED",
+      commandType: "CRAFT_RECIPE",
+      message: transaction.error,
+      payload: {
+        recipeId,
+        quantity,
+        transactionCode: transaction.failure.code,
+        transactionPayload: transaction.failure.payload
+      }
+    });
+  }
+
+  const craftedBaseState: GameState = {
+    ...state,
+    player: transaction.player
+  };
+  const timedCraftResult = advanceStateTimeForCommand(
+    craftedBaseState,
+    state.time,
+    recipe.craftMinutes,
+    "CRAFT_RECIPE",
+    "craftRecipe"
+  );
+
+  if (!timedCraftResult.ok) {
+    return failCommand(state, command, {
+      code: timedCraftResult.failure.code,
+      commandType: "CRAFT_RECIPE",
+      message: timedCraftResult.failure.message,
+      payload: {
+        recipeId,
+        quantity
+      }
+    });
+  }
+
+  return succeedCommand(timedCraftResult.state, command as GameCommand, "CRAFT_RECIPE", [
+    ...timedCraftResult.events,
+    createGameEvent(
+      state,
+      timedCraftResult.state.time,
+      "CRAFT_RECIPE",
+      GAME_EVENT_TYPES.CRAFT_RECIPE_COMPLETED,
+      "command",
+      "Recipe crafted.",
+      {
+        recipeId,
+        quantity,
+        category: recipe.category,
+        craftMinutes: recipe.craftMinutes,
+        inputs: scaleItemQuantities(recipe.inputs, quantity),
+        outputs: scaleItemQuantities(recipe.outputs, quantity)
+      },
+      timedCraftResult.events.length
+    )
+  ]);
+}
+
+interface RecipeDefinitionFailure {
+  readonly message: string;
+  readonly reason: string;
+}
+
+function validateRecipeDefinition(
+  recipe: RecipeDefinition,
+  craftQuantity: number,
+  itemStackLimits: Readonly<Record<string, number>>
+): RecipeDefinitionFailure | undefined {
+  if (typeof recipe.category !== "string" || recipe.category.trim().length === 0) {
+    return createRecipeDefinitionFailure("Recipe category must be a non-empty string.");
+  }
+
+  if (!Number.isSafeInteger(recipe.craftMinutes) || recipe.craftMinutes < 0) {
+    return createRecipeDefinitionFailure("Recipe craftMinutes must be a non-negative safe integer.");
+  }
+
+  if (!Array.isArray(recipe.inputs) || recipe.inputs.length === 0) {
+    return createRecipeDefinitionFailure("Recipe inputs must be a non-empty array.");
+  }
+
+  if (!Array.isArray(recipe.outputs) || recipe.outputs.length === 0) {
+    return createRecipeDefinitionFailure("Recipe outputs must be a non-empty array.");
+  }
+
+  const inputFailure = validateRecipeItemQuantities(
+    recipe.inputs,
+    "input",
+    craftQuantity,
+    itemStackLimits
+  );
+  if (inputFailure !== undefined) {
+    return inputFailure;
+  }
+
+  const outputFailure = validateRecipeItemQuantities(
+    recipe.outputs,
+    "output",
+    craftQuantity,
+    itemStackLimits
+  );
+  if (outputFailure !== undefined) {
+    return outputFailure;
+  }
+
+  if (recipe.unlockFlagIds !== undefined) {
+    if (!Array.isArray(recipe.unlockFlagIds)) {
+      return createRecipeDefinitionFailure("Recipe unlockFlagIds must be an array when present.");
+    }
+
+    for (const [index, flagId] of recipe.unlockFlagIds.entries()) {
+      if (typeof flagId !== "string" || flagId.trim().length === 0) {
+        return createRecipeDefinitionFailure(`Recipe unlockFlagIds[${index}] must be a non-empty string.`);
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function validateRecipeItemQuantities(
+  itemQuantities: readonly ItemQuantity[],
+  role: "input" | "output",
+  craftQuantity: number,
+  itemStackLimits: Readonly<Record<string, number>>
+): RecipeDefinitionFailure | undefined {
+  for (const [index, itemQuantity] of itemQuantities.entries()) {
+    if (!isRecord(itemQuantity)) {
+      return createRecipeDefinitionFailure(`Recipe ${role}s[${index}] must be an object.`);
+    }
+
+    if (typeof itemQuantity.itemId !== "string" || itemQuantity.itemId.trim().length === 0) {
+      return createRecipeDefinitionFailure(`Recipe ${role}s[${index}].itemId must be a non-empty string.`);
+    }
+
+    if (!Number.isSafeInteger(itemQuantity.quantity) || itemQuantity.quantity <= 0) {
+      return createRecipeDefinitionFailure(
+        `Recipe ${role}s[${index}].quantity must be a positive safe integer.`
+      );
+    }
+
+    if (itemStackLimits[itemQuantity.itemId] === undefined) {
+      return createRecipeDefinitionFailure(
+        `Recipe ${role}s[${index}].itemId references unknown item: ${itemQuantity.itemId}.`
+      );
+    }
+
+    if (itemQuantity.quantity * craftQuantity > Number.MAX_SAFE_INTEGER) {
+      return createRecipeDefinitionFailure(
+        `Recipe ${role}s[${index}].quantity exceeds safe integer bounds when scaled.`
+      );
+    }
+  }
+
+  return undefined;
+}
+
+function createRecipeDefinitionFailure(message: string): RecipeDefinitionFailure {
+  return {
+    message,
+    reason: message
+  };
+}
+
+function createCraftInventoryMutations(
+  recipe: RecipeDefinition,
+  craftQuantity: number
+): readonly InventoryMutation[] {
+  return [
+    ...recipe.inputs.map((itemQuantity) => ({
+      kind: "remove" as const,
+      itemId: itemQuantity.itemId,
+      quantity: itemQuantity.quantity * craftQuantity
+    })),
+    ...recipe.outputs.map((itemQuantity) => ({
+      kind: "add" as const,
+      itemId: itemQuantity.itemId,
+      quantity: itemQuantity.quantity * craftQuantity
+    }))
+  ];
+}
+
+function scaleItemQuantities(
+  itemQuantities: readonly ItemQuantity[],
+  craftQuantity: number
+): readonly JsonObject[] {
+  return itemQuantities.map((itemQuantity) => ({
+    itemId: itemQuantity.itemId,
+    quantity: itemQuantity.quantity * craftQuantity
+  }));
+}
+
 function succeedCommand(
   state: GameState,
   command: GameCommand,
@@ -792,6 +1153,10 @@ function canonicalCommandType(type: string): GameCommandType | undefined {
     return "CLEAR_TILE";
   }
 
+  if (type === "CRAFT_RECIPE" || type === "craftRecipe") {
+    return "CRAFT_RECIPE";
+  }
+
   return undefined;
 }
 
@@ -897,4 +1262,8 @@ function isCommandFailure(value: FarmTile | CommandFailure | unknown): value is 
 
 function isNonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
