@@ -25,7 +25,8 @@ export const GAME_EVENT_TYPES = {
   FARM_CROP_GROWTH_ADVANCED: "FARM_CROP_GROWTH_ADVANCED",
   FARM_CROP_READY: "FARM_CROP_READY",
   FARM_CROP_HARVESTED: "FARM_CROP_HARVESTED",
-  FARM_TILE_CLEARED: "FARM_TILE_CLEARED"
+  FARM_TILE_CLEARED: "FARM_TILE_CLEARED",
+  PLAYER_EXHAUSTED: "PLAYER_EXHAUSTED"
 } as const;
 
 export type JsonPrimitive = string | number | boolean | null;
@@ -224,7 +225,7 @@ export interface DecorState {
   readonly placements: readonly DecorPlacementState[];
 }
 
-export type GameEventCategory = "command" | "system" | "time" | "farm";
+export type GameEventCategory = "command" | "system" | "time" | "farm" | "player";
 
 export interface GameEvent {
   readonly id: GameEventId;
