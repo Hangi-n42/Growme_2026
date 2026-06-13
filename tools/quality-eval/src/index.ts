@@ -1,5 +1,7 @@
 export interface QualityEvalResult {
   readonly ok: boolean;
+  readonly releaseCandidateBlocked: boolean;
+  readonly status: "pass" | "blocked" | "fail";
   readonly failedGateIds: readonly string[];
   readonly scaffoldedGateIds: readonly string[];
   readonly gates: readonly QualityGateStatus[];
@@ -48,9 +50,13 @@ export function evaluateScaffoldQuality(): QualityEvalResult {
   const scaffoldedGateIds = scaffoldedReleaseCandidateGates
     .filter((gate) => gate.status === "scaffolded_blocker")
     .map((gate) => gate.id);
+  const releaseCandidateBlocked = scaffoldedGateIds.length > 0;
+  const status = failedGateIds.length > 0 ? "fail" : releaseCandidateBlocked ? "blocked" : "pass";
 
   return {
-    ok: failedGateIds.length === 0,
+    ok: status === "pass",
+    releaseCandidateBlocked,
+    status,
     failedGateIds,
     scaffoldedGateIds,
     gates: scaffoldedReleaseCandidateGates

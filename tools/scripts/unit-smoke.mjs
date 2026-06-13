@@ -6,7 +6,7 @@ import { readText, repoRoot, runCheck } from "./lib/repo.mjs";
 const vitestPath = join(repoRoot, "node_modules", "vitest", "vitest.mjs");
 
 if (existsSync(vitestPath)) {
-  const result = spawnSync(process.execPath, [vitestPath, "run", "packages/sim-core/tests"], {
+  const result = spawnSync(process.execPath, [vitestPath, "run", "packages/sim-core/tests", "tools/quality-eval/tests"], {
     cwd: repoRoot,
     stdio: "inherit"
   });

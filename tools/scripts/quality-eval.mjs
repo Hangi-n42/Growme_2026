@@ -102,6 +102,8 @@ const scaffoldedReleaseBlockers = [
   }
 ];
 
+const scaffoldedQualityResult = buildScaffoldedQualityResult(scaffoldedReleaseBlockers);
+
 runCheck("quality eval release gates are represented", () => {
   const gates = readText("quality-gates.yml");
   const qualityBar = readText("QUALITY_BAR.md");
@@ -161,7 +163,7 @@ runCheck("protected thresholds are explicitly enforced", () => {
   }
 });
 
-runCheck("release-candidate scaffold blockers are named", () => {
+runCheck("release-candidate scaffold blockers are reported as blocking", () => {
   const qualityBar = readText("QUALITY_BAR.md");
   const releaseChecklist = readText("docs/release-checklist.md");
 
@@ -181,6 +183,11 @@ runCheck("release-candidate scaffold blockers are named", () => {
     }
   }
 
+  if (scaffoldedQualityResult.ok || !scaffoldedQualityResult.releaseCandidateBlocked) {
+    throw new Error("Scaffolded release-candidate blockers must not be reported as a passing quality result.");
+  }
+
+  console.log(`QUALITY_EVAL_RESULT ${JSON.stringify(scaffoldedQualityResult)}`);
   console.log(`SCAFFOLDED_RELEASE_BLOCKERS ${JSON.stringify(scaffoldedReleaseBlockers)}`);
 });
 
@@ -191,4 +198,16 @@ function extractRequiredCommands(gatesText) {
   }
 
   return [...match.groups.body.matchAll(/^\s*-\s+(pnpm [^\r\n]+)/gmu)].map((commandMatch) => commandMatch[1]);
+}
+
+function buildScaffoldedQualityResult(scaffoldedBlockers) {
+  const scaffoldedGateIds = scaffoldedBlockers.map((blocker) => blocker.id);
+
+  return {
+    ok: scaffoldedGateIds.length === 0,
+    releaseCandidateBlocked: scaffoldedGateIds.length > 0,
+    failedGateIds: [],
+    scaffoldedGateIds,
+    gates: scaffoldedBlockers
+  };
 }
