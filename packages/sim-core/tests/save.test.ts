@@ -71,7 +71,14 @@ function createRoundtripState(): GameState {
     },
     npcs: {
       metNpcIds: ["nia_moss", "oren_clay"],
-      memoryFlags: ["met_nia_moss"]
+      memoryFlags: ["met_nia_moss"],
+      dialogueCooldowns: [
+        {
+          lineId: "nia_daily",
+          speakerId: "nia_moss",
+          availableDay: 2
+        }
+      ]
     },
     relationships: {
       affinity: [

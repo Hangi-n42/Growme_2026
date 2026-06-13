@@ -88,7 +88,8 @@ export function createInitialContractsState(): ContractsState {
 export function createInitialNpcMemoryState(): NpcMemoryState {
   return {
     metNpcIds: [],
-    memoryFlags: []
+    memoryFlags: [],
+    dialogueCooldowns: []
   };
 }
 

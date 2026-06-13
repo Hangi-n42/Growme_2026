@@ -5,6 +5,19 @@ const fixtureDirectory = "packages/content-schema/content/fixtures/";
 const idPattern = /^[a-z][a-z0-9_]*$/u;
 const placeholderTextPattern = /\b(?:todo|tbd|placeholder|lorem ipsum)\b/iu;
 const storyRoles = new Set(["primary", "supporting"]);
+const dialogueCategories = new Set([
+  "first_meet",
+  "daily",
+  "weather",
+  "shop",
+  "gift_like",
+  "gift_dislike",
+  "request_offer",
+  "request_progress",
+  "request_complete",
+  "relationship_milestone",
+  "story_event"
+]);
 
 const requiredMinimums = {
   residents: 5,
@@ -410,10 +423,16 @@ function validateDialogue(collections, errors, localizedKeys) {
 
   for (const [id, line] of collections.dialogue) {
     requireReference(line.speakerId, collections.residents, `dialogue ${id}.speakerId`, errors);
+    if (typeof line.category !== "string" || !dialogueCategories.has(line.category)) {
+      errors.push(`dialogue ${id}.category must be one of ${[...dialogueCategories].join(", ")}.`);
+    }
     validateLocalizedText(line.text, `dialogue ${id}.text`, errors, localizedKeys);
+    requireIntegerInRange(line.priority, 0, 1000, `dialogue ${id}.priority`, errors);
+    requireIntegerInRange(line.cooldownDays, 0, 365, `dialogue ${id}.cooldownDays`, errors);
     for (const flagId of optionalStringArray(line.setsFlagIds, `dialogue ${id}.setsFlagIds`, errors)) {
       requireReference(flagId, collections.flags, `dialogue ${id}.setsFlagIds`, errors);
     }
+    validateDialogueConditions(line.conditions, `dialogue ${id}.conditions`, collections, errors);
 
     const categories = categoriesBySpeaker.get(line.speakerId) ?? new Set();
     categories.add(line.category);
@@ -425,6 +444,32 @@ function validateDialogue(collections, errors, localizedKeys) {
     if (!categories || !categories.has("first_meet") || !categories.has("daily")) {
       errors.push(`resident ${residentId} must have first_meet and daily dialogue lines.`);
     }
+  }
+}
+
+function validateDialogueConditions(value, path, collections, errors) {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!isRecord(value)) {
+    errors.push(`${path} must be an object.`);
+    return;
+  }
+
+  for (const flagId of optionalStringArray(value.requiredFlagIds, `${path}.requiredFlagIds`, errors)) {
+    requireReference(flagId, collections.flags, `${path}.requiredFlagIds`, errors);
+  }
+  for (const flagId of optionalStringArray(value.blockedFlagIds, `${path}.blockedFlagIds`, errors)) {
+    requireReference(flagId, collections.flags, `${path}.blockedFlagIds`, errors);
+  }
+
+  if (value.activeContractId !== undefined) {
+    requireReference(value.activeContractId, collections.contracts, `${path}.activeContractId`, errors);
+  }
+
+  if (value.minAffinity !== undefined) {
+    requireIntegerInRange(value.minAffinity, 0, 100, `${path}.minAffinity`, errors);
   }
 }
 

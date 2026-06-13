@@ -36,9 +36,11 @@ import type {
   GameState,
   GameTime,
   CropDefinition,
+  DialogueLineDefinition,
   FarmTile,
   ItemQuantity,
   JsonObject,
+  NpcId,
   RecipeDefinition
 } from "./types";
 import {
@@ -60,6 +62,26 @@ type CommandRecord = {
   readonly type: string;
   readonly [key: string]: unknown;
 };
+
+const REQUEST_DIALOGUE_CATEGORIES = new Set([
+  "request_offer",
+  "request_progress",
+  "request_complete"
+]);
+
+const DIALOGUE_CATEGORY_RANKS = new Map<string, number>([
+  ["story_event", 0],
+  ["request_offer", 1],
+  ["request_progress", 1],
+  ["request_complete", 1],
+  ["first_meet", 2],
+  ["relationship_milestone", 3],
+  ["weather", 4],
+  ["shop", 4],
+  ["gift_like", 4],
+  ["gift_dislike", 4],
+  ["daily", 5]
+]);
 
 export function applyCommand(
   state: GameState,
@@ -113,6 +135,8 @@ export function reduceGameCommand(
       return clearTile(state, command);
     case "CRAFT_RECIPE":
       return craftRecipe(state, command, context.content ?? EMPTY_GAME_CONTENT);
+    case "TALK_TO_NPC":
+      return talkToNpc(state, command, context.content ?? EMPTY_GAME_CONTENT);
   }
 }
 
@@ -762,6 +786,325 @@ function craftRecipe(
   ]);
 }
 
+function talkToNpc(
+  state: GameState,
+  command: CommandRecord,
+  content: GameContentState
+): GameCommandResult {
+  const npcId = readNpcId(command);
+
+  if (npcId === undefined) {
+    return failCommand(state, command, {
+      code: "INVALID_NPC_ID",
+      commandType: "TALK_TO_NPC",
+      message: "TALK_TO_NPC requires a non-empty npcId.",
+      payload: {}
+    });
+  }
+
+  if (!isKnownResident(content, npcId)) {
+    return failCommand(state, command, {
+      code: "UNKNOWN_NPC",
+      commandType: "TALK_TO_NPC",
+      message: `Unknown NPC id: ${npcId}.`,
+      payload: { npcId }
+    });
+  }
+
+  const selectedLine = selectDialogueLine(state, npcId, content);
+
+  if (selectedLine === undefined) {
+    return failCommand(state, command, {
+      code: "NO_DIALOGUE_AVAILABLE",
+      commandType: "TALK_TO_NPC",
+      message: `No authored dialogue is available for NPC ${npcId}.`,
+      payload: { npcId }
+    });
+  }
+
+  const setFlagIds = selectedLine.setsFlagIds ?? [];
+  const nextCooldowns = upsertDialogueCooldown(
+    state.npcs.dialogueCooldowns,
+    selectedLine,
+    state.day
+  );
+  const nextState: GameState = {
+    ...state,
+    npcs: {
+      ...state.npcs,
+      metNpcIds: addUniqueStrings(state.npcs.metNpcIds, [npcId]),
+      memoryFlags: addUniqueStrings(state.npcs.memoryFlags, setFlagIds),
+      dialogueCooldowns: nextCooldowns
+    }
+  };
+
+  return succeedCommand(nextState, command as GameCommand, "TALK_TO_NPC", [
+    createGameEvent(
+      state,
+      state.time,
+      "TALK_TO_NPC",
+      GAME_EVENT_TYPES.NPC_DIALOGUE_SELECTED,
+      "npc",
+      "NPC dialogue selected.",
+      {
+        npcId,
+        lineId: selectedLine.id,
+        category: selectedLine.category,
+        textKey: selectedLine.text.key,
+        text: selectedLine.text.text,
+        priority: selectedLine.priority,
+        cooldownDays: selectedLine.cooldownDays,
+        setFlagIds
+      },
+      0
+    )
+  ]);
+}
+
+function selectDialogueLine(
+  state: GameState,
+  npcId: NpcId,
+  content: GameContentState
+): DialogueLineDefinition | undefined {
+  const activeStoryLineIds = getActiveStoryLineIds(state, content);
+  const hasStoryEvents = (content.storyEvents?.length ?? 0) > 0;
+  const candidates = (content.dialogue ?? []).filter((line) =>
+    isDialogueLineEligible(state, npcId, line, activeStoryLineIds, hasStoryEvents)
+  );
+
+  return candidates.sort((left, right) =>
+    compareDialogueLines(left, right, activeStoryLineIds)
+  )[0];
+}
+
+function compareDialogueLines(
+  left: DialogueLineDefinition,
+  right: DialogueLineDefinition,
+  activeStoryLineIds: ReadonlySet<string>
+): number {
+  const categoryRank =
+    getDialogueCategoryRank(left, activeStoryLineIds) -
+    getDialogueCategoryRank(right, activeStoryLineIds);
+
+  if (categoryRank !== 0) {
+    return categoryRank;
+  }
+
+  const priorityRank = right.priority - left.priority;
+  if (priorityRank !== 0) {
+    return priorityRank;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+function getDialogueCategoryRank(
+  line: DialogueLineDefinition,
+  activeStoryLineIds: ReadonlySet<string>
+): number {
+  if (line.category === "story_event" && activeStoryLineIds.has(line.id)) {
+    return 0;
+  }
+
+  return DIALOGUE_CATEGORY_RANKS.get(line.category) ?? 6;
+}
+
+function isDialogueLineEligible(
+  state: GameState,
+  npcId: NpcId,
+  line: DialogueLineDefinition,
+  activeStoryLineIds: ReadonlySet<string>,
+  hasStoryEvents: boolean
+): boolean {
+  if (!isValidDialogueLine(line) || line.speakerId !== npcId) {
+    return false;
+  }
+
+  if (
+    line.category === "story_event" &&
+    !isStoryDialogueActive(line, activeStoryLineIds, hasStoryEvents)
+  ) {
+    return false;
+  }
+
+  if (REQUEST_DIALOGUE_CATEGORIES.has(line.category) && !hasActiveRequestContext(state, npcId, line)) {
+    return false;
+  }
+
+  if (line.setsFlagIds?.some((flagId) => hasRuntimeFlag(state, flagId)) === true) {
+    return false;
+  }
+
+  if (isDialogueLineOnCooldown(state, line)) {
+    return false;
+  }
+
+  return areDialogueConditionsSatisfied(state, npcId, line);
+}
+
+function isValidDialogueLine(line: DialogueLineDefinition): boolean {
+  return (
+    typeof line.id === "string" &&
+    line.id.trim().length > 0 &&
+    typeof line.speakerId === "string" &&
+    line.speakerId.trim().length > 0 &&
+    typeof line.category === "string" &&
+    line.category.trim().length > 0 &&
+    typeof line.text?.key === "string" &&
+    line.text.key.trim().length > 0 &&
+    typeof line.text.text === "string" &&
+    line.text.text.trim().length > 0 &&
+    Number.isSafeInteger(line.priority) &&
+    Number.isSafeInteger(line.cooldownDays) &&
+    line.cooldownDays >= 0
+  );
+}
+
+function isStoryDialogueActive(
+  line: DialogueLineDefinition,
+  activeStoryLineIds: ReadonlySet<string>,
+  hasStoryEvents: boolean
+): boolean {
+  return hasStoryEvents ? activeStoryLineIds.has(line.id) : true;
+}
+
+function hasActiveRequestContext(
+  state: GameState,
+  npcId: NpcId,
+  line: DialogueLineDefinition
+): boolean {
+  const activeContractId = line.conditions?.activeContractId;
+
+  if (activeContractId !== undefined) {
+    return state.contracts.active.some(
+      (contract) =>
+        contract.contractId === activeContractId &&
+        contract.requesterId === npcId &&
+        contract.status === "active"
+    );
+  }
+
+  return state.contracts.active.some(
+    (contract) => contract.requesterId === npcId && contract.status === "active"
+  );
+}
+
+function areDialogueConditionsSatisfied(
+  state: GameState,
+  npcId: NpcId,
+  line: DialogueLineDefinition
+): boolean {
+  const conditions = line.conditions;
+  if (conditions === undefined) {
+    return true;
+  }
+
+  if (conditions.requiredFlagIds?.every((flagId) => hasRuntimeFlag(state, flagId)) === false) {
+    return false;
+  }
+
+  if (conditions.blockedFlagIds?.some((flagId) => hasRuntimeFlag(state, flagId)) === true) {
+    return false;
+  }
+
+  if (conditions.minAffinity !== undefined && getNpcAffinity(state, npcId) < conditions.minAffinity) {
+    return false;
+  }
+
+  if (conditions.activeContractId !== undefined) {
+    return state.contracts.active.some(
+      (contract) =>
+        contract.contractId === conditions.activeContractId &&
+        contract.requesterId === npcId &&
+        contract.status === "active"
+    );
+  }
+
+  return true;
+}
+
+function getActiveStoryLineIds(state: GameState, content: GameContentState): ReadonlySet<string> {
+  const lineIds = new Set<string>();
+
+  for (const storyEvent of content.storyEvents ?? []) {
+    if (state.story.completedEventIds.includes(storyEvent.id)) {
+      continue;
+    }
+
+    const triggerFlagIds = storyEvent.triggerFlagIds ?? [];
+    if (!triggerFlagIds.every((flagId) => hasRuntimeFlag(state, flagId))) {
+      continue;
+    }
+
+    const setFlagIds = storyEvent.setsFlagIds ?? [];
+    if (setFlagIds.length > 0 && setFlagIds.every((flagId) => hasRuntimeFlag(state, flagId))) {
+      continue;
+    }
+
+    for (const lineId of storyEvent.dialogueLineIds ?? []) {
+      lineIds.add(lineId);
+    }
+  }
+
+  return lineIds;
+}
+
+function isDialogueLineOnCooldown(state: GameState, line: DialogueLineDefinition): boolean {
+  return state.npcs.dialogueCooldowns.some(
+    (cooldown) => cooldown.lineId === line.id && cooldown.availableDay > state.day
+  );
+}
+
+function upsertDialogueCooldown(
+  cooldowns: readonly { readonly lineId: string; readonly speakerId: NpcId; readonly availableDay: number }[],
+  line: DialogueLineDefinition,
+  day: number
+) {
+  const remainingCooldowns = cooldowns.filter((cooldown) => cooldown.lineId !== line.id);
+
+  if (line.cooldownDays === 0) {
+    return remainingCooldowns;
+  }
+
+  return [
+    ...remainingCooldowns,
+    {
+      lineId: line.id,
+      speakerId: line.speakerId,
+      availableDay: day + line.cooldownDays
+    }
+  ];
+}
+
+function hasRuntimeFlag(state: GameState, flagId: string): boolean {
+  return (
+    state.flags.includes(flagId) ||
+    state.npcs.memoryFlags.includes(flagId) ||
+    state.relationships.milestoneFlags.includes(flagId) ||
+    state.story.flags.includes(flagId)
+  );
+}
+
+function getNpcAffinity(state: GameState, npcId: NpcId): number {
+  return state.relationships.affinity.find((entry) => entry.npcId === npcId)?.affinity ?? 0;
+}
+
+function isKnownResident(content: GameContentState, npcId: NpcId): boolean {
+  return content.residents?.some((resident) => resident.id === npcId) === true;
+}
+
+function addUniqueStrings<T extends string>(existing: readonly T[], values: readonly T[]): readonly T[] {
+  const next = [...existing];
+
+  for (const value of values) {
+    if (!next.includes(value)) {
+      next.push(value);
+    }
+  }
+
+  return next;
+}
+
 interface RecipeDefinitionFailure {
   readonly message: string;
   readonly reason: string;
@@ -1171,6 +1514,10 @@ function canonicalCommandType(type: string): GameCommandType | undefined {
     return "CRAFT_RECIPE";
   }
 
+  if (type === "TALK_TO_NPC" || type === "talkToNpc") {
+    return "TALK_TO_NPC";
+  }
+
   return undefined;
 }
 
@@ -1240,6 +1587,12 @@ function readTileCropOrFailure(
 function readSeedItemId(command: CommandRecord): string | undefined {
   return typeof command.seedItemId === "string" && command.seedItemId.trim().length > 0
     ? command.seedItemId
+    : undefined;
+}
+
+function readNpcId(command: CommandRecord): string | undefined {
+  return typeof command.npcId === "string" && command.npcId.trim().length > 0
+    ? command.npcId
     : undefined;
 }
 

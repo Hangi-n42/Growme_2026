@@ -26,7 +26,8 @@ export const GAME_EVENT_TYPES = {
   FARM_CROP_READY: "FARM_CROP_READY",
   FARM_CROP_HARVESTED: "FARM_CROP_HARVESTED",
   FARM_TILE_CLEARED: "FARM_TILE_CLEARED",
-  PLAYER_EXHAUSTED: "PLAYER_EXHAUSTED"
+  PLAYER_EXHAUSTED: "PLAYER_EXHAUSTED",
+  NPC_DIALOGUE_SELECTED: "NPC_DIALOGUE_SELECTED"
 } as const;
 
 export type JsonPrimitive = string | number | boolean | null;
@@ -53,6 +54,11 @@ export interface ItemQuantity {
   readonly quantity: number;
 }
 
+export interface LocalizedText {
+  readonly key: string;
+  readonly text: string;
+}
+
 export interface ItemStackLimits {
   readonly [itemId: ItemId]: number;
 }
@@ -66,9 +72,43 @@ export interface RecipeDefinition {
   readonly unlockFlagIds?: readonly string[];
 }
 
+export interface ResidentDefinition {
+  readonly id: NpcId;
+  readonly displayName?: LocalizedText;
+}
+
+export interface DialogueConditionDefinition {
+  readonly requiredFlagIds?: readonly string[];
+  readonly blockedFlagIds?: readonly string[];
+  readonly minAffinity?: number;
+  readonly activeContractId?: string;
+}
+
+export interface DialogueLineDefinition {
+  readonly id: string;
+  readonly speakerId: NpcId;
+  readonly category: string;
+  readonly text: LocalizedText;
+  readonly conditions?: DialogueConditionDefinition;
+  readonly priority: number;
+  readonly cooldownDays: number;
+  readonly setsFlagIds?: readonly string[];
+}
+
+export interface StoryEventDefinition {
+  readonly id: string;
+  readonly triggerFlagIds?: readonly string[];
+  readonly setsFlagIds?: readonly string[];
+  readonly participantNpcIds?: readonly NpcId[];
+  readonly dialogueLineIds?: readonly string[];
+}
+
 export interface GameContentState {
   readonly itemStackLimits: ItemStackLimits;
   readonly recipes: readonly RecipeDefinition[];
+  readonly residents?: readonly ResidentDefinition[];
+  readonly dialogue?: readonly DialogueLineDefinition[];
+  readonly storyEvents?: readonly StoryEventDefinition[];
 }
 
 export const EMPTY_GAME_CONTENT: GameContentState = {
@@ -188,6 +228,13 @@ export interface ContractsState {
 export interface NpcMemoryState {
   readonly metNpcIds: readonly NpcId[];
   readonly memoryFlags: readonly string[];
+  readonly dialogueCooldowns: readonly DialogueCooldownState[];
+}
+
+export interface DialogueCooldownState {
+  readonly lineId: string;
+  readonly speakerId: NpcId;
+  readonly availableDay: number;
 }
 
 export interface RelationshipAffinityState {
@@ -225,7 +272,7 @@ export interface DecorState {
   readonly placements: readonly DecorPlacementState[];
 }
 
-export type GameEventCategory = "command" | "system" | "time" | "farm" | "player";
+export type GameEventCategory = "command" | "system" | "time" | "farm" | "player" | "npc";
 
 export interface GameEvent {
   readonly id: GameEventId;
@@ -297,7 +344,8 @@ export type GameCommandType =
   | "WATER_CROP"
   | "HARVEST_CROP"
   | "CLEAR_TILE"
-  | "CRAFT_RECIPE";
+  | "CRAFT_RECIPE"
+  | "TALK_TO_NPC";
 
 export interface NoopCommand {
   readonly type: "NOOP";
@@ -395,6 +443,16 @@ export interface LegacyCraftRecipeCommand {
   readonly quantity?: number;
 }
 
+export interface TalkToNpcCommand {
+  readonly type: "TALK_TO_NPC";
+  readonly npcId: NpcId;
+}
+
+export interface LegacyTalkToNpcCommand {
+  readonly type: "talkToNpc";
+  readonly npcId: NpcId;
+}
+
 export type GameCommand =
   | NoopCommand
   | AdvanceTimeCommand
@@ -412,7 +470,9 @@ export type GameCommand =
   | ClearTileCommand
   | LegacyClearTileCommand
   | CraftRecipeCommand
-  | LegacyCraftRecipeCommand;
+  | LegacyCraftRecipeCommand
+  | TalkToNpcCommand
+  | LegacyTalkToNpcCommand;
 
 export type CommandFailureCode =
   | "UNKNOWN_COMMAND"
@@ -437,7 +497,10 @@ export type CommandFailureCode =
   | "INVALID_CRAFT_QUANTITY"
   | "INVALID_RECIPE_DEFINITION"
   | "RECIPE_LOCKED"
-  | "CRAFT_TRANSACTION_FAILED";
+  | "CRAFT_TRANSACTION_FAILED"
+  | "INVALID_NPC_ID"
+  | "UNKNOWN_NPC"
+  | "NO_DIALOGUE_AVAILABLE";
 
 export interface CommandFailure {
   readonly code: CommandFailureCode;
