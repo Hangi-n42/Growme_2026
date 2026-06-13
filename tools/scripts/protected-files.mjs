@@ -1,21 +1,10 @@
-import { listFiles, readJson, readText, runCheck } from "./lib/repo.mjs";
+import { listFiles, listWorkspacePackageManifests, readJson, readText, runCheck } from "./lib/repo.mjs";
 
 const protectedWorkflowCommands = [
   "pnpm check:protected-files",
   "pnpm check:no-test-skip",
   "pnpm check:no-quality-threshold-lowering",
   "pnpm eval:quality"
-];
-
-const workspacePackages = [
-  "package.json",
-  "apps/game-web/package.json",
-  "packages/sim-core/package.json",
-  "packages/content-schema/package.json",
-  "tools/content-validator/package.json",
-  "tools/economy-sim/package.json",
-  "tools/npc-sim/package.json",
-  "tools/quality-eval/package.json"
 ];
 
 runCheck("protected files exist and do not disable gates", () => {
@@ -42,18 +31,46 @@ runCheck("protected files exist and do not disable gates", () => {
   }
 });
 
+runCheck("workspace package manifests are discovered from pnpm-workspace globs", () => {
+  const workspacePackages = listWorkspacePackageManifests();
+
+  for (const expectedManifest of [
+    "package.json",
+    "apps/game-web/package.json",
+    "packages/sim-core/package.json",
+    "packages/content-schema/package.json",
+    "tools/quality-eval/package.json"
+  ]) {
+    if (!workspacePackages.includes(expectedManifest)) {
+      throw new Error(`Workspace package manifest was not discovered: ${expectedManifest}.`);
+    }
+  }
+});
+
+runCheck("forbidden PixiJS dependency fixture manifests are rejected", () => {
+  const fixtureManifests = [
+    { path: "fixture-pixi/package.json", manifest: { dependencies: { pixi: "1.0.0" } }, expected: "pixi" },
+    { path: "fixture-pixi-js/package.json", manifest: { devDependencies: { "pixi.js": "1.0.0" } }, expected: "pixi.js" },
+    { path: "fixture-pixi-scope/package.json", manifest: { dependencies: { "@pixi/core": "1.0.0" } }, expected: "@pixi/core" }
+  ];
+
+  for (const { path, manifest, expected } of fixtureManifests) {
+    const forbiddenDependencies = findForbiddenPixiDependencies(manifest);
+    if (!forbiddenDependencies.includes(expected)) {
+      throw new Error(`${path} fixture did not reject forbidden PixiJS dependency ${expected}.`);
+    }
+  }
+});
+
 runCheck("forbidden gameplay dependency drift is protected", () => {
+  const workspacePackages = listWorkspacePackageManifests();
+
   for (const manifestPath of workspacePackages) {
     const manifest = readJson(manifestPath);
-    const dependencies = {
-      ...(manifest.dependencies ?? {}),
-      ...(manifest.devDependencies ?? {})
-    };
-
-    for (const dependencyName of Object.keys(dependencies)) {
-      if (dependencyName.toLowerCase().includes("pixi")) {
-        throw new Error(`${manifestPath} declares forbidden dependency ${dependencyName}.`);
-      }
+    for (const dependencyName of findForbiddenPixiDependencies(manifest)) {
+      throw new Error(
+        `${manifestPath} declares forbidden PixiJS dependency ${dependencyName}; protected decision pixijs_dependency: forbidden.`
+      );
     }
   }
 
@@ -72,3 +89,19 @@ runCheck("forbidden gameplay dependency drift is protected", () => {
     }
   }
 });
+
+function findForbiddenPixiDependencies(manifest) {
+  const dependencies = {
+    ...(manifest.dependencies ?? {}),
+    ...(manifest.devDependencies ?? {}),
+    ...(manifest.optionalDependencies ?? {}),
+    ...(manifest.peerDependencies ?? {})
+  };
+
+  return Object.keys(dependencies).filter((dependencyName) => isForbiddenPixiDependencyName(dependencyName));
+}
+
+function isForbiddenPixiDependencyName(dependencyName) {
+  const lowerName = dependencyName.toLowerCase();
+  return lowerName === "pixi" || lowerName === "pixi.js" || lowerName.startsWith("@pixi/");
+}

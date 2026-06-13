@@ -14,6 +14,61 @@ export function readJson(path) {
   return JSON.parse(readText(path));
 }
 
+export function listWorkspacePackageManifests() {
+  const workspaceText = readText("pnpm-workspace.yaml");
+  const workspaceGlobs = extractWorkspacePackageGlobs(workspaceText);
+  const manifests = new Set(["package.json"]);
+
+  for (const file of listFiles()) {
+    if (!file.endsWith("/package.json")) {
+      continue;
+    }
+
+    const packageDir = file.slice(0, -"/package.json".length);
+    if (workspaceGlobs.some((glob) => workspaceGlobMatchesPackageDir(glob, packageDir))) {
+      manifests.add(file);
+    }
+  }
+
+  return [...manifests].sort();
+}
+
+export function extractWorkspacePackageGlobs(workspaceText) {
+  const globs = [];
+  const lines = workspaceText.split(/\r?\n/u);
+  let inPackages = false;
+  let packagesIndent = 0;
+
+  for (const line of lines) {
+    if (/^\s*(?:#.*)?$/u.test(line)) {
+      continue;
+    }
+
+    const packagesMatch = /^(\s*)packages\s*:\s*(?:#.*)?$/u.exec(line);
+    if (packagesMatch) {
+      inPackages = true;
+      packagesIndent = packagesMatch[1].length;
+      continue;
+    }
+
+    if (!inPackages) {
+      continue;
+    }
+
+    const indent = /^\s*/u.exec(line)?.[0].length ?? 0;
+    if (indent <= packagesIndent && !/^\s*-/u.test(line)) {
+      break;
+    }
+
+    const itemMatch = /^\s*-\s*["']?([^"'\r\n#]+)["']?\s*(?:#.*)?$/u.exec(line);
+    if (itemMatch) {
+      globs.push(itemMatch[1].trim().replaceAll("\\", "/"));
+    }
+  }
+
+  return globs;
+}
+
 export function listFiles(start = repoRoot) {
   const files = [];
 
@@ -75,4 +130,38 @@ export function findTextFiles() {
     const lower = file.toLowerCase();
     return [...extensions].some((extension) => lower.endsWith(extension));
   });
+}
+
+function workspaceGlobMatchesPackageDir(workspaceGlob, packageDir) {
+  const normalizedGlob = workspaceGlob.replaceAll("\\", "/").replace(/\/+$/u, "");
+  const target = normalizedGlob.endsWith("/package.json") ? `${packageDir}/package.json` : packageDir;
+  return globToRegExp(normalizedGlob).test(target);
+}
+
+function globToRegExp(glob) {
+  let pattern = "";
+
+  for (let index = 0; index < glob.length; index += 1) {
+    const char = glob[index];
+    const nextChar = glob[index + 1];
+
+    if (char === "*" && nextChar === "*") {
+      pattern += ".*";
+      index += 1;
+      continue;
+    }
+
+    if (char === "*") {
+      pattern += "[^/]*";
+      continue;
+    }
+
+    pattern += escapeRegExp(char);
+  }
+
+  return new RegExp(`^${pattern}$`, "u");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[\\^$.*+?()[\]{}|]/gu, "\\$&");
 }
