@@ -13,6 +13,7 @@ import {
   SAVE_SCHEMA_VERSION,
   type AuditEvent,
   type CommandLogState,
+  type DialogueCooldownState,
   type FarmState,
   type GameEvent,
   type GameSaveSnapshot,
@@ -292,7 +293,7 @@ function normalizeLegacyGameState(value: Record<string, unknown>): GameState {
     mine: state.mine ?? createInitialMineState(time.day),
     shops: state.shops ?? createInitialShopsState(),
     contracts: state.contracts ?? createInitialContractsState(),
-    npcs: state.npcs ?? createInitialNpcMemoryState(),
+    npcs: normalizeNpcMemoryState(state.npcs),
     relationships: state.relationships ?? createInitialRelationshipsState(),
     story: state.story ?? createInitialStoryState(),
     decor: state.decor ?? createInitialDecorState(),
@@ -300,6 +301,20 @@ function normalizeLegacyGameState(value: Record<string, unknown>): GameState {
     eventLog: state.eventLog as readonly GameEvent[],
     auditLog: state.auditLog as readonly AuditEvent[],
     commandLog: state.commandLog as CommandLogState
+  };
+}
+
+function normalizeNpcMemoryState(value: unknown) {
+  if (!isRecord(value)) {
+    return createInitialNpcMemoryState();
+  }
+
+  return {
+    metNpcIds: Array.isArray(value.metNpcIds) ? (value.metNpcIds as readonly string[]) : [],
+    memoryFlags: Array.isArray(value.memoryFlags) ? (value.memoryFlags as readonly string[]) : [],
+    dialogueCooldowns: Array.isArray(value.dialogueCooldowns)
+      ? (value.dialogueCooldowns as readonly DialogueCooldownState[])
+      : []
   };
 }
 
@@ -596,6 +611,21 @@ function validateNpcMemoryState(value: unknown, path: string, issues: SaveValida
 
   validateStringArray(npcs.metNpcIds, `${path}.metNpcIds`, issues);
   validateStringArray(npcs.memoryFlags, `${path}.memoryFlags`, issues);
+  validateArray(
+    npcs.dialogueCooldowns,
+    `${path}.dialogueCooldowns`,
+    (cooldownValue, cooldownPath, cooldownIssues) => {
+      const cooldown = readRecord(cooldownValue, cooldownPath, cooldownIssues);
+      if (cooldown === undefined) {
+        return;
+      }
+
+      requireNonEmptyString(cooldown.lineId, `${cooldownPath}.lineId`, cooldownIssues);
+      requireNonEmptyString(cooldown.speakerId, `${cooldownPath}.speakerId`, cooldownIssues);
+      requirePositiveInteger(cooldown.availableDay, `${cooldownPath}.availableDay`, cooldownIssues);
+    },
+    issues
+  );
 }
 
 function validateRelationshipsState(value: unknown, path: string, issues: SaveValidationIssue[]): void {

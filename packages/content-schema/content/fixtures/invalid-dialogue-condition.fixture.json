@@ -1,0 +1,10 @@
+{
+  "description": "Dialogue conditions must resolve authored flags and contracts.",
+  "patches": [
+    { "op": "replace", "path": ["dialogue", 0, "conditions"], "value": { "requiredFlagIds": ["missing_dialogue_flag"], "activeContractId": "missing_contract" } }
+  ],
+  "expectedErrors": [
+    "dialogue nia_first_meet.conditions.requiredFlagIds references unknown id: missing_dialogue_flag",
+    "dialogue nia_first_meet.conditions.activeContractId references unknown id: missing_contract"
+  ]
+}
