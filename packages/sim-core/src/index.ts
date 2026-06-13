@@ -1,5 +1,16 @@
 export { applyCommand, reduceGameCommand } from "./commands";
 export {
+  TOOL_ACTION_CATEGORIES,
+  TOOL_ACTION_ENERGY_COSTS,
+  checkToolActionEnergy,
+  createInsufficientToolActionEnergyFailure,
+  createToolActionEnergyPayload,
+  getToolActionCategory,
+  getToolActionEnergyCost,
+  restoreDailyEnergy,
+  spendToolActionEnergy
+} from "./energy";
+export {
   DEFAULT_CROP_DEFINITIONS,
   DEFAULT_FARM_HEIGHT,
   DEFAULT_FARM_ITEM_STACK_LIMIT,
@@ -202,6 +213,12 @@ export type {
   FarmDayTransitionResult,
   FarmTileCoordinate
 } from "./farm";
+export type {
+  ToolActionCategory,
+  ToolActionEnergyCheck,
+  ToolActionEnergyDefinition,
+  ToolActionKind
+} from "./energy";
 export type {
   InventoryMutation,
   InventoryMutationKind,

@@ -7,17 +7,18 @@ import {
   type ItemId
 } from "./types";
 import type { ItemStackLimitLookup } from "./inventory";
+import { TOOL_ACTION_ENERGY_COSTS } from "./energy";
 
 export const DEFAULT_FARM_WIDTH = 4;
 export const DEFAULT_FARM_HEIGHT = 3;
 export const DEFAULT_FARM_ITEM_STACK_LIMIT = 99;
 
 export const FARM_ENERGY_COSTS = {
-  till: 4,
-  plant: 2,
-  water: 2,
-  harvest: 3,
-  clear: 5
+  till: TOOL_ACTION_ENERGY_COSTS.till.energyCost,
+  plant: TOOL_ACTION_ENERGY_COSTS.plant.energyCost,
+  water: TOOL_ACTION_ENERGY_COSTS.water.energyCost,
+  harvest: TOOL_ACTION_ENERGY_COSTS.harvest.energyCost,
+  clear: TOOL_ACTION_ENERGY_COSTS.clear.energyCost
 } as const;
 
 export const DEFAULT_CROP_DEFINITIONS: readonly CropDefinition[] = [

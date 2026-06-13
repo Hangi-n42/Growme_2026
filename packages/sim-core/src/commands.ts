@@ -48,6 +48,13 @@ import {
   GAME_EVENT_TYPES,
   MINUTES_PER_DAY
 } from "./types";
+import {
+  createInsufficientToolActionEnergyFailure,
+  createToolActionEnergyPayload,
+  restoreDailyEnergy,
+  spendToolActionEnergy,
+  type ToolActionKind
+} from "./energy";
 
 type CommandRecord = {
   readonly type: string;
@@ -187,10 +194,7 @@ function sleepToNextDay(state: GameState, command: CommandRecord): GameCommandRe
     {
       ...state,
       farm: farmTransition.farm,
-      player: {
-        ...state.player,
-        energy: DEFAULT_MAX_ENERGY
-      }
+      player: restoreDailyEnergy(state.player, DEFAULT_MAX_ENERGY)
     },
     time
   );
@@ -309,14 +313,14 @@ function tillTile(state: GameState, command: CommandRecord): GameCommandResult {
     });
   }
 
-  const energyFailure = validateEnergy(state, FARM_ENERGY_COSTS.till, "TILL_TILE");
+  const energyFailure = validateEnergy(state, "till", "TILL_TILE");
   if (energyFailure !== undefined) {
     return failCommand(state, command, energyFailure);
   }
 
   const nextState = {
     ...state,
-    player: spendPlayerEnergy(state, FARM_ENERGY_COSTS.till),
+    player: spendPlayerEnergy(state, "till"),
     farm: replaceFarmTile(state.farm, createTilledFarmTile(tileOrFailure))
   };
 
@@ -331,7 +335,7 @@ function tillTile(state: GameState, command: CommandRecord): GameCommandResult {
       {
         x: tileOrFailure.x,
         y: tileOrFailure.y,
-        energyCost: FARM_ENERGY_COSTS.till
+        ...createToolActionEnergyPayload("till")
       },
       0
     )
@@ -377,7 +381,7 @@ function plantCrop(state: GameState, command: CommandRecord): GameCommandResult 
     });
   }
 
-  const energyFailure = validateEnergy(state, FARM_ENERGY_COSTS.plant, "PLANT_CROP");
+  const energyFailure = validateEnergy(state, "plant", "PLANT_CROP");
   if (energyFailure !== undefined) {
     return failCommand(state, command, energyFailure);
   }
@@ -405,8 +409,7 @@ function plantCrop(state: GameState, command: CommandRecord): GameCommandResult 
   const nextState = {
     ...state,
     player: {
-      ...transaction.player,
-      energy: transaction.player.energy - FARM_ENERGY_COSTS.plant
+      ...spendToolActionEnergy(transaction.player, "plant")
     },
     farm: replaceFarmTile(state.farm, createPlantedFarmTile(tileOrFailure, crop, state.day))
   };
@@ -424,7 +427,7 @@ function plantCrop(state: GameState, command: CommandRecord): GameCommandResult 
         y: tileOrFailure.y,
         cropId: crop.id,
         seedItemId,
-        energyCost: FARM_ENERGY_COSTS.plant
+        ...createToolActionEnergyPayload("plant")
       },
       0
     )
@@ -464,14 +467,14 @@ function waterCrop(state: GameState, command: CommandRecord): GameCommandResult 
     });
   }
 
-  const energyFailure = validateEnergy(state, FARM_ENERGY_COSTS.water, "WATER_CROP");
+  const energyFailure = validateEnergy(state, "water", "WATER_CROP");
   if (energyFailure !== undefined) {
     return failCommand(state, command, energyFailure);
   }
 
   const nextState = {
     ...state,
-    player: spendPlayerEnergy(state, FARM_ENERGY_COSTS.water),
+    player: spendPlayerEnergy(state, "water"),
     farm: replaceFarmTile(state.farm, createWateredFarmTile(tileOrFailure, state.day))
   };
 
@@ -487,7 +490,7 @@ function waterCrop(state: GameState, command: CommandRecord): GameCommandResult 
         x: tileOrFailure.x,
         y: tileOrFailure.y,
         cropId: crop.id,
-        energyCost: FARM_ENERGY_COSTS.water
+        ...createToolActionEnergyPayload("water")
       },
       0
     )
@@ -515,7 +518,7 @@ function harvestCrop(state: GameState, command: CommandRecord): GameCommandResul
     return failCommand(state, command, crop);
   }
 
-  const energyFailure = validateEnergy(state, FARM_ENERGY_COSTS.harvest, "HARVEST_CROP");
+  const energyFailure = validateEnergy(state, "harvest", "HARVEST_CROP");
   if (energyFailure !== undefined) {
     return failCommand(state, command, energyFailure);
   }
@@ -549,8 +552,7 @@ function harvestCrop(state: GameState, command: CommandRecord): GameCommandResul
   const nextState = {
     ...state,
     player: {
-      ...transaction.player,
-      energy: transaction.player.energy - FARM_ENERGY_COSTS.harvest
+      ...spendToolActionEnergy(transaction.player, "harvest")
     },
     farm: replaceFarmTile(state.farm, createHarvestedFarmTile(tileOrFailure, crop))
   };
@@ -569,7 +571,7 @@ function harvestCrop(state: GameState, command: CommandRecord): GameCommandResul
         cropId: crop.id,
         harvestItemId: crop.harvestItemId,
         harvestQuantity: crop.harvestQuantity,
-        energyCost: FARM_ENERGY_COSTS.harvest
+        ...createToolActionEnergyPayload("harvest")
       },
       0
     )
@@ -592,14 +594,14 @@ function clearTile(state: GameState, command: CommandRecord): GameCommandResult 
     });
   }
 
-  const energyFailure = validateEnergy(state, FARM_ENERGY_COSTS.clear, "CLEAR_TILE");
+  const energyFailure = validateEnergy(state, "clear", "CLEAR_TILE");
   if (energyFailure !== undefined) {
     return failCommand(state, command, energyFailure);
   }
 
   const nextState = {
     ...state,
-    player: spendPlayerEnergy(state, FARM_ENERGY_COSTS.clear),
+    player: spendPlayerEnergy(state, "clear"),
     farm: replaceFarmTile(state.farm, createClearedFarmTile(tileOrFailure))
   };
 
@@ -614,7 +616,7 @@ function clearTile(state: GameState, command: CommandRecord): GameCommandResult 
       {
         x: tileOrFailure.x,
         y: tileOrFailure.y,
-        energyCost: FARM_ENERGY_COSTS.clear
+        ...createToolActionEnergyPayload("clear")
       },
       0
     )
@@ -934,6 +936,11 @@ function failCommand(
   command: unknown,
   failure: CommandFailure
 ): GameCommandResult {
+  const failurePayload = {
+    code: failure.code,
+    commandSequence: state.commandLog.nextSequence,
+    ...failure.payload
+  };
   const event = createGameEvent(
     state,
     state.time,
@@ -941,22 +948,29 @@ function failCommand(
     GAME_EVENT_TYPES.COMMAND_FAILED,
     "command",
     failure.message,
-    {
-      code: failure.code,
-      commandSequence: state.commandLog.nextSequence
-    },
+    failurePayload,
     0
   );
+  const exhaustionEvent =
+    failure.code === "INSUFFICIENT_ENERGY"
+      ? createGameEvent(
+          state,
+          state.time,
+          failure.commandType,
+          GAME_EVENT_TYPES.PLAYER_EXHAUSTED,
+          "player",
+          "Player is too exhausted for this action.",
+          failurePayload,
+          1
+        )
+      : undefined;
   const audit = createAuditEvent(
     state,
     state.time,
     "command.rejected",
     failure.commandType,
     failure.message,
-    {
-      code: failure.code,
-      commandSequence: state.commandLog.nextSequence
-    }
+    failurePayload
   );
 
   return {
@@ -964,7 +978,7 @@ function failCommand(
     status: "failure",
     command,
     state,
-    events: [event],
+    events: exhaustionEvent === undefined ? [event] : [event, exhaustionEvent],
     audit: [audit],
     failure,
     error: failure.message
@@ -1231,29 +1245,14 @@ function readSeedItemId(command: CommandRecord): string | undefined {
 
 function validateEnergy(
   state: GameState,
-  energyCost: number,
+  actionKind: ToolActionKind,
   commandType: GameCommandType
 ): CommandFailure | undefined {
-  if (state.player.energy < energyCost) {
-    return {
-      code: "INSUFFICIENT_ENERGY",
-      commandType,
-      message: "Player does not have enough energy for this farm action.",
-      payload: {
-        energy: state.player.energy,
-        requiredEnergy: energyCost
-      }
-    };
-  }
-
-  return undefined;
+  return createInsufficientToolActionEnergyFailure(state.player, actionKind, commandType);
 }
 
-function spendPlayerEnergy(state: GameState, energyCost: number) {
-  return {
-    ...state.player,
-    energy: state.player.energy - energyCost
-  };
+function spendPlayerEnergy(state: GameState, actionKind: ToolActionKind) {
+  return spendToolActionEnergy(state.player, actionKind);
 }
 
 function isCommandFailure(value: FarmTile | CommandFailure | unknown): value is CommandFailure {
