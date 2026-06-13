@@ -17,12 +17,16 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 
 ## Autonomous Workflow
 
-1. Start each feature from a Git worktree branch prefixed with `codex/`.
-2. Create or select a GitHub Issue before implementation. Every issue must include requirements, non-goals, acceptance criteria, tests, quality gates, and suggested agent.
-3. Keep changes scoped to the issue. Do not refactor unrelated systems.
-4. Run the narrowest meaningful local checks before committing.
-5. Open a GitHub Pull Request with the issue link, test results, risks, and screenshots or reports when relevant.
-6. Do not merge unless GitHub Actions quality gates pass or the PR is explicitly marked as non-release documentation work.
+1. Create or select a GitHub Issue before implementation. Every issue must include requirements, non-goals, acceptance criteria, tests, quality gates, and suggested agent.
+2. Fetch remote main immediately before starting work: `git fetch origin main`.
+3. Start each feature from the freshly fetched main ref with a Git worktree branch prefixed with `codex/`: `git switch -c codex/<issue-slug> origin/main`.
+4. Before editing files, verify the local head branch includes the latest fetched main commit: `git merge-base --is-ancestor origin/main HEAD` and `corepack pnpm@10.12.1 run check:branch-freshness`.
+5. If continuing an existing `codex/` branch, fetch first, then rebase or merge `origin/main` before editing: `git fetch origin main` followed by `git rebase origin/main`.
+6. Keep changes scoped to the issue. Do not refactor unrelated systems.
+7. Run the narrowest meaningful local checks before committing.
+8. Before opening or updating a GitHub Pull Request, repeat the fetch and freshness check so the PR head contains the latest `origin/main`.
+9. Open a GitHub Pull Request with the issue link, test results, risks, and screenshots or reports when relevant.
+10. Do not merge unless GitHub Actions quality gates pass or the PR is explicitly marked as non-release documentation work.
 
 ## Communication policy
 
