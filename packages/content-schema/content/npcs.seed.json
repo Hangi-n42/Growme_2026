@@ -198,11 +198,19 @@
       "job": { "key": "npc.nia_moss.job", "text": "Seed shop owner" },
       "homeLocationId": "nia_home",
       "scheduleId": "nia_moss_schedule",
-      "preferenceTags": ["fresh", "seed", "flower"],
+      "preferenceProfile": {
+        "likedTags": ["fresh", "seed", "flower"],
+        "dislikedTags": ["ore"],
+        "giftItemIds": ["turnip_crop", "wild_herbs"]
+      },
       "requestHookIds": ["starter_crop_help", "first_harvest"],
       "relationshipHookIds": ["nia_seed_unlock"],
+      "memoryFlagIds": ["met_nia_moss", "rel_nia_20_seed_unlock"],
       "shopIds": ["nia_seed_stall"],
-      "storyEventIds": ["arrival"]
+      "storyParticipation": [
+        { "storyEventId": "arrival", "role": "primary" },
+        { "storyEventId": "first_harvest", "role": "supporting" }
+      ]
     },
     {
       "id": "oren_clay",
@@ -210,11 +218,18 @@
       "job": { "key": "npc.oren_clay.job", "text": "Workshop keeper" },
       "homeLocationId": "oren_home",
       "scheduleId": "oren_clay_schedule",
-      "preferenceTags": ["stone", "repair", "crafted"],
+      "preferenceProfile": {
+        "likedTags": ["stone", "repair", "crafted"],
+        "dislikedTags": ["seed"],
+        "giftItemIds": ["fieldstone", "repair_plank"]
+      },
       "requestHookIds": ["tool_repair_intro", "garden_path_repair"],
       "relationshipHookIds": ["oren_workshop_discount"],
+      "memoryFlagIds": ["met_oren_clay", "rel_oren_20_workshop_discount"],
       "shopIds": ["oren_workshop"],
-      "storyEventIds": ["blocked_path_restoration"]
+      "storyParticipation": [
+        { "storyEventId": "blocked_path_restoration", "role": "primary" }
+      ]
     },
     {
       "id": "tavi_reed",
@@ -222,11 +237,18 @@
       "job": { "key": "npc.tavi_reed.job", "text": "General goods clerk and courier" },
       "homeLocationId": "tavi_home",
       "scheduleId": "tavi_reed_schedule",
-      "preferenceTags": ["snack", "route", "fiber"],
+      "preferenceProfile": {
+        "likedTags": ["route", "paper", "fiber"],
+        "dislikedTags": ["ore"],
+        "giftItemIds": ["note_paper", "wild_fiber"]
+      },
       "requestHookIds": ["first_delivery", "market_note"],
       "relationshipHookIds": ["tavi_map_hint"],
+      "memoryFlagIds": ["met_tavi_reed", "rel_tavi_20_map_hint"],
       "shopIds": ["tavi_general_store"],
-      "storyEventIds": ["arrival"]
+      "storyParticipation": [
+        { "storyEventId": "arrival", "role": "supporting" }
+      ]
     },
     {
       "id": "mara_well",
@@ -234,11 +256,18 @@
       "job": { "key": "npc.mara_well.job", "text": "Cook and community organizer" },
       "homeLocationId": "mara_home",
       "scheduleId": "mara_well_schedule",
-      "preferenceTags": ["meal", "crop", "warm"],
+      "preferenceProfile": {
+        "likedTags": ["meal", "crop", "warm"],
+        "dislikedTags": ["ore"],
+        "giftItemIds": ["turnip_crop", "stew_pot"]
+      },
       "requestHookIds": ["stew_supplies", "harvest_setup"],
       "relationshipHookIds": ["mara_meal_gift"],
+      "memoryFlagIds": ["met_mara_well", "rel_mara_20_meal_gift"],
       "shopIds": [],
-      "storyEventIds": ["first_harvest"]
+      "storyParticipation": [
+        { "storyEventId": "first_harvest", "role": "primary" }
+      ]
     },
     {
       "id": "ilo_fen",
@@ -246,11 +275,18 @@
       "job": { "key": "npc.ilo_fen.job", "text": "Naturalist" },
       "homeLocationId": "ilo_home",
       "scheduleId": "ilo_fen_schedule",
-      "preferenceTags": ["forage", "rain", "wild"],
+      "preferenceProfile": {
+        "likedTags": ["forage", "rain", "wild"],
+        "dislikedTags": ["crafted"],
+        "giftItemIds": ["wild_herbs", "wild_fiber"]
+      },
       "requestHookIds": ["rain_sample", "meadow_notes"],
       "relationshipHookIds": ["ilo_forage_hint"],
+      "memoryFlagIds": ["met_ilo_fen", "rel_ilo_20_forage_hint"],
       "shopIds": [],
-      "storyEventIds": ["blocked_path_restoration"]
+      "storyParticipation": [
+        { "storyEventId": "blocked_path_restoration", "role": "supporting" }
+      ]
     },
     {
       "id": "sena_vale",
@@ -258,11 +294,19 @@
       "job": { "key": "npc.sena_vale.job", "text": "Archivist" },
       "homeLocationId": "sena_home",
       "scheduleId": "sena_vale_schedule",
-      "preferenceTags": ["history", "paper", "curious"],
+      "preferenceProfile": {
+        "likedTags": ["history", "paper", "curious"],
+        "dislikedTags": ["seed"],
+        "giftItemIds": ["note_paper", "fieldstone"]
+      },
       "requestHookIds": ["old_marker", "garden_clue"],
       "relationshipHookIds": ["sena_archive_access"],
+      "memoryFlagIds": ["met_sena_vale", "rel_sena_20_archive_access"],
       "shopIds": [],
-      "storyEventIds": ["arrival", "blocked_path_restoration"]
+      "storyParticipation": [
+        { "storyEventId": "arrival", "role": "supporting" },
+        { "storyEventId": "blocked_path_restoration", "role": "supporting" }
+      ]
     }
   ],
   "schedules": [

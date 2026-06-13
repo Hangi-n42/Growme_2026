@@ -4,6 +4,7 @@ const seedManifestPath = "packages/content-schema/content/npcs.seed.json";
 const fixtureDirectory = "packages/content-schema/content/fixtures/";
 const idPattern = /^[a-z][a-z0-9_]*$/u;
 const placeholderTextPattern = /\b(?:todo|tbd|placeholder|lorem ipsum)\b/iu;
+const storyRoles = new Set(["primary", "supporting"]);
 
 const requiredMinimums = {
   residents: 5,
@@ -189,17 +190,86 @@ function validateResidents(collections, errors, localizedKeys) {
     validateLocalizedText(resident.job, `resident ${id}.job`, errors, localizedKeys);
     requireReference(resident.homeLocationId, collections.locations, `resident ${id}.homeLocationId`, errors);
     requireReference(resident.scheduleId, collections.schedules, `resident ${id}.scheduleId`, errors);
+    validateResidentPreferenceProfile(resident.preferenceProfile, `resident ${id}.preferenceProfile`, collections, errors);
     for (const contractId of requireStringArray(resident.requestHookIds, `resident ${id}.requestHookIds`, errors)) {
-      requireReference(contractId, collections.contracts, `resident ${id}.requestHookIds`, errors);
+      const contract = requireReference(contractId, collections.contracts, `resident ${id}.requestHookIds`, errors);
+      if (contract && contract.requesterNpcId !== id) {
+        errors.push(`resident ${id}.requestHookIds references contract ${contractId} owned by ${contract.requesterNpcId}.`);
+      }
     }
     for (const milestoneId of requireStringArray(resident.relationshipHookIds, `resident ${id}.relationshipHookIds`, errors)) {
-      requireReference(milestoneId, collections.relationshipMilestones, `resident ${id}.relationshipHookIds`, errors);
+      const milestone = requireReference(
+        milestoneId,
+        collections.relationshipMilestones,
+        `resident ${id}.relationshipHookIds`,
+        errors
+      );
+      if (milestone && milestone.npcId !== id) {
+        errors.push(`resident ${id}.relationshipHookIds references milestone ${milestoneId} owned by ${milestone.npcId}.`);
+      }
     }
-    for (const shopId of optionalStringArray(resident.shopIds, `resident ${id}.shopIds`, errors)) {
-      requireReference(shopId, collections.shops, `resident ${id}.shopIds`, errors);
+    for (const flagId of requireStringArray(resident.memoryFlagIds, `resident ${id}.memoryFlagIds`, errors)) {
+      requireReference(flagId, collections.flags, `resident ${id}.memoryFlagIds`, errors);
     }
-    for (const storyEventId of optionalStringArray(resident.storyEventIds, `resident ${id}.storyEventIds`, errors)) {
-      requireReference(storyEventId, collections.storyEvents, `resident ${id}.storyEventIds`, errors);
+    for (const shopId of requireStringArray(resident.shopIds, `resident ${id}.shopIds`, errors, { allowEmpty: true })) {
+      const shop = requireReference(shopId, collections.shops, `resident ${id}.shopIds`, errors);
+      if (shop && shop.ownerNpcId !== id) {
+        errors.push(`resident ${id}.shopIds references shop ${shopId} owned by ${shop.ownerNpcId}.`);
+      }
+    }
+    validateResidentStoryParticipation(id, resident.storyParticipation, `resident ${id}.storyParticipation`, collections, errors);
+  }
+}
+
+function validateResidentPreferenceProfile(value, path, collections, errors) {
+  if (!isRecord(value)) {
+    errors.push(`${path} must be an object.`);
+    return;
+  }
+
+  const likedTags = requireStringArray(value.likedTags, `${path}.likedTags`, errors);
+  const dislikedTags = requireStringArray(value.dislikedTags, `${path}.dislikedTags`, errors);
+  const giftItemIds = requireStringArray(value.giftItemIds, `${path}.giftItemIds`, errors);
+
+  validateUniqueStrings(likedTags, `${path}.likedTags`, errors);
+  validateUniqueStrings(dislikedTags, `${path}.dislikedTags`, errors);
+  validateUniqueStrings(giftItemIds, `${path}.giftItemIds`, errors);
+
+  for (const itemId of giftItemIds) {
+    requireReference(itemId, collections.items, `${path}.giftItemIds`, errors);
+  }
+
+  const likedTagSet = new Set(likedTags);
+  for (const tag of dislikedTags) {
+    if (likedTagSet.has(tag)) {
+      errors.push(`${path} cannot like and dislike tag: ${tag}.`);
+    }
+  }
+}
+
+function validateResidentStoryParticipation(residentId, values, path, collections, errors) {
+  const records = requiredRecords(values, path, errors);
+  const storyEventIds = new Set();
+
+  for (const [index, value] of records.entries()) {
+    const entryPath = `${path}[${index}]`;
+
+    const storyEvent = requireReference(value.storyEventId, collections.storyEvents, `${entryPath}.storyEventId`, errors);
+    if (typeof value.role !== "string" || !storyRoles.has(value.role)) {
+      errors.push(`${entryPath}.role must be one of primary, supporting.`);
+    }
+
+    if (typeof value.storyEventId !== "string") {
+      continue;
+    }
+
+    if (storyEventIds.has(value.storyEventId)) {
+      errors.push(`${path} contains duplicate story event: ${value.storyEventId}.`);
+    }
+    storyEventIds.add(value.storyEventId);
+
+    if (storyEvent && Array.isArray(storyEvent.participantNpcIds) && !storyEvent.participantNpcIds.includes(residentId)) {
+      errors.push(`${entryPath}.storyEventId references story event ${value.storyEventId} without participant ${residentId}.`);
     }
   }
 }
@@ -439,12 +509,15 @@ function requiredRecords(values, path, errors) {
 function requireReference(id, validIds, path, errors) {
   if (typeof id !== "string" || id.trim().length === 0) {
     errors.push(`${path} must be a non-empty string.`);
-    return;
+    return undefined;
   }
 
   if (!validIds.has(id)) {
     errors.push(`${path} references unknown id: ${id}`);
+    return undefined;
   }
+
+  return typeof validIds.get === "function" ? validIds.get(id) : id;
 }
 
 function requireString(value, path, errors) {
@@ -453,9 +526,14 @@ function requireString(value, path, errors) {
   }
 }
 
-function requireStringArray(values, path, errors) {
-  if (!Array.isArray(values) || values.length === 0) {
-    errors.push(`${path} must be a non-empty array.`);
+function requireStringArray(values, path, errors, options = {}) {
+  if (!Array.isArray(values)) {
+    errors.push(`${path} must be an array.`);
+    return [];
+  }
+
+  if (values.length === 0 && options.allowEmpty !== true) {
+    errors.push(`${path} must not be empty.`);
     return [];
   }
 
@@ -489,6 +567,19 @@ function requireIntegerInRange(value, min, max, path, errors) {
 
   if (value < min || value > max) {
     errors.push(`${path} must be between ${min} and ${max}.`);
+  }
+}
+
+function validateUniqueStrings(values, path, errors) {
+  const seen = new Set();
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      errors.push(`${path} contains duplicate value: ${value}.`);
+      continue;
+    }
+
+    seen.add(value);
   }
 }
 

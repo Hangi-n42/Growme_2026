@@ -1,31 +1,221 @@
 import { readJson, runCheck } from "./lib/repo.mjs";
 
-runCheck("v0.1 NPC seed content meets scaffold minimum", () => {
-  const manifest = readJson("packages/content-schema/content/npcs.seed.json");
+const placeholderNamePattern = /\b(?:todo|tbd|placeholder|npc\s*\d*)\b/iu;
+const storyRoles = new Set(["primary", "supporting"]);
 
-  if (manifest.residents.length < 5) {
+runCheck("v0.1 NPC profiles are authored, linked, and meet scaffold minimum", () => {
+  const manifest = readJson("packages/content-schema/content/npcs.seed.json");
+  const collections = {
+    flags: collectById(manifest.flags),
+    locations: collectById(manifest.locations),
+    schedules: collectById(manifest.schedules),
+    items: collectById(manifest.items),
+    contracts: collectById(manifest.contracts),
+    relationshipMilestones: collectById(manifest.relationshipMilestones),
+    shops: collectById(manifest.shops),
+    storyEvents: collectById(manifest.storyEvents)
+  };
+
+  if (!Array.isArray(manifest.residents) || manifest.residents.length < 5) {
     throw new Error("At least 5 NPC residents are required for v0.1.");
   }
 
-  for (const resident of manifest.residents) {
-    for (const key of ["id", "homeLocationId", "scheduleId"]) {
-      if (typeof resident[key] !== "string" || resident[key].length === 0) {
-        throw new Error(`Resident ${resident.id ?? "unknown"} is missing ${key}.`);
-      }
-    }
+  const residentIds = new Set();
+  const residentNames = new Set();
 
-    for (const key of ["displayName", "job"]) {
-      const text = resident[key];
-      if (
-        typeof text !== "object" ||
-        text === null ||
-        typeof text.key !== "string" ||
-        text.key.length === 0 ||
-        typeof text.text !== "string" ||
-        text.text.length === 0
-      ) {
-        throw new Error(`Resident ${resident.id ?? "unknown"} is missing localized ${key}.`);
-      }
+  for (const resident of manifest.residents) {
+    const residentId = requireNonEmptyString(resident.id, "resident.id");
+    if (residentIds.has(residentId)) {
+      throw new Error(`Duplicate resident id: ${residentId}.`);
     }
+    residentIds.add(residentId);
+
+    validateLocalizedText(resident.displayName, `resident ${residentId}.displayName`);
+    validateLocalizedText(resident.job, `resident ${residentId}.job`);
+    if (placeholderNamePattern.test(resident.displayName.text)) {
+      throw new Error(`resident ${residentId}.displayName.text contains placeholder player-facing text.`);
+    }
+    if (residentNames.has(resident.displayName.text)) {
+      throw new Error(`Duplicate resident display name: ${resident.displayName.text}.`);
+    }
+    residentNames.add(resident.displayName.text);
+
+    requireReference(resident.homeLocationId, collections.locations, `resident ${residentId}.homeLocationId`);
+    requireReference(resident.scheduleId, collections.schedules, `resident ${residentId}.scheduleId`);
+    validatePreferenceProfile(resident.preferenceProfile, residentId, collections);
+    validateOwnedContracts(resident.requestHookIds, residentId, collections);
+    validateOwnedMilestones(resident.relationshipHookIds, residentId, collections);
+    validateMemoryFlags(resident.memoryFlagIds, residentId, collections);
+    validateOwnedShops(resident.shopIds, residentId, collections);
+    validateStoryParticipation(resident.storyParticipation, residentId, collections);
   }
 });
+
+function validatePreferenceProfile(profile, residentId, collections) {
+  if (!isRecord(profile)) {
+    throw new Error(`resident ${residentId}.preferenceProfile must be an object.`);
+  }
+
+  const likedTags = requireStringArray(profile.likedTags, `resident ${residentId}.preferenceProfile.likedTags`);
+  const dislikedTags = requireStringArray(profile.dislikedTags, `resident ${residentId}.preferenceProfile.dislikedTags`);
+  const giftItemIds = requireStringArray(profile.giftItemIds, `resident ${residentId}.preferenceProfile.giftItemIds`);
+
+  rejectDuplicates(likedTags, `resident ${residentId}.preferenceProfile.likedTags`);
+  rejectDuplicates(dislikedTags, `resident ${residentId}.preferenceProfile.dislikedTags`);
+  rejectDuplicates(giftItemIds, `resident ${residentId}.preferenceProfile.giftItemIds`);
+
+  const likedTagSet = new Set(likedTags);
+  for (const tag of dislikedTags) {
+    if (likedTagSet.has(tag)) {
+      throw new Error(`resident ${residentId}.preferenceProfile cannot like and dislike tag: ${tag}.`);
+    }
+  }
+
+  for (const itemId of giftItemIds) {
+    requireReference(itemId, collections.items, `resident ${residentId}.preferenceProfile.giftItemIds`);
+  }
+}
+
+function validateOwnedContracts(contractIds, residentId, collections) {
+  for (const contractId of requireStringArray(contractIds, `resident ${residentId}.requestHookIds`)) {
+    const contract = requireReference(contractId, collections.contracts, `resident ${residentId}.requestHookIds`);
+    if (contract.requesterNpcId !== residentId) {
+      throw new Error(`resident ${residentId}.requestHookIds references contract ${contractId} owned by ${contract.requesterNpcId}.`);
+    }
+  }
+}
+
+function validateOwnedMilestones(milestoneIds, residentId, collections) {
+  for (const milestoneId of requireStringArray(milestoneIds, `resident ${residentId}.relationshipHookIds`)) {
+    const milestone = requireReference(
+      milestoneId,
+      collections.relationshipMilestones,
+      `resident ${residentId}.relationshipHookIds`
+    );
+    if (milestone.npcId !== residentId) {
+      throw new Error(`resident ${residentId}.relationshipHookIds references milestone ${milestoneId} owned by ${milestone.npcId}.`);
+    }
+  }
+}
+
+function validateMemoryFlags(flagIds, residentId, collections) {
+  for (const flagId of requireStringArray(flagIds, `resident ${residentId}.memoryFlagIds`)) {
+    requireReference(flagId, collections.flags, `resident ${residentId}.memoryFlagIds`);
+  }
+}
+
+function validateOwnedShops(shopIds, residentId, collections) {
+  for (const shopId of requireStringArray(shopIds, `resident ${residentId}.shopIds`, { allowEmpty: true })) {
+    const shop = requireReference(shopId, collections.shops, `resident ${residentId}.shopIds`);
+    if (shop.ownerNpcId !== residentId) {
+      throw new Error(`resident ${residentId}.shopIds references shop ${shopId} owned by ${shop.ownerNpcId}.`);
+    }
+  }
+}
+
+function validateStoryParticipation(participation, residentId, collections) {
+  const records = requireRecordArray(participation, `resident ${residentId}.storyParticipation`);
+  const storyEventIds = new Set();
+
+  for (const [index, entry] of records.entries()) {
+    const path = `resident ${residentId}.storyParticipation[${index}]`;
+    const storyEventId = requireNonEmptyString(entry.storyEventId, `${path}.storyEventId`);
+    if (typeof entry.role !== "string" || !storyRoles.has(entry.role)) {
+      throw new Error(`${path}.role must be one of primary, supporting.`);
+    }
+    if (storyEventIds.has(storyEventId)) {
+      throw new Error(`resident ${residentId}.storyParticipation contains duplicate story event: ${storyEventId}.`);
+    }
+    storyEventIds.add(storyEventId);
+
+    const storyEvent = requireReference(storyEventId, collections.storyEvents, `${path}.storyEventId`);
+    if (!Array.isArray(storyEvent.participantNpcIds) || !storyEvent.participantNpcIds.includes(residentId)) {
+      throw new Error(`${path}.storyEventId references story event ${storyEventId} without participant ${residentId}.`);
+    }
+  }
+}
+
+function collectById(values) {
+  const ids = new Map();
+  if (!Array.isArray(values)) {
+    return ids;
+  }
+
+  for (const value of values) {
+    if (isRecord(value) && typeof value.id === "string") {
+      ids.set(value.id, value);
+    }
+  }
+
+  return ids;
+}
+
+function validateLocalizedText(value, path) {
+  if (!isRecord(value)) {
+    throw new Error(`${path} must be a localized text object.`);
+  }
+
+  requireNonEmptyString(value.key, `${path}.key`);
+  requireNonEmptyString(value.text, `${path}.text`);
+}
+
+function requireReference(id, validIds, path) {
+  const referenceId = requireNonEmptyString(id, path);
+  const value = validIds.get(referenceId);
+  if (value === undefined) {
+    throw new Error(`${path} references unknown id: ${referenceId}.`);
+  }
+
+  return value;
+}
+
+function requireStringArray(values, path, options = {}) {
+  if (!Array.isArray(values)) {
+    throw new Error(`${path} must be an array.`);
+  }
+  if (values.length === 0 && options.allowEmpty !== true) {
+    throw new Error(`${path} must not be empty.`);
+  }
+
+  for (const [index, value] of values.entries()) {
+    requireNonEmptyString(value, `${path}[${index}]`);
+  }
+
+  return values;
+}
+
+function requireRecordArray(values, path) {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error(`${path} must be a non-empty array.`);
+  }
+
+  for (const [index, value] of values.entries()) {
+    if (!isRecord(value)) {
+      throw new Error(`${path}[${index}] must be an object.`);
+    }
+  }
+
+  return values;
+}
+
+function rejectDuplicates(values, path) {
+  const seen = new Set();
+  for (const value of values) {
+    if (seen.has(value)) {
+      throw new Error(`${path} contains duplicate value: ${value}.`);
+    }
+    seen.add(value);
+  }
+}
+
+function requireNonEmptyString(value, path) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${path} must be a non-empty string.`);
+  }
+
+  return value;
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

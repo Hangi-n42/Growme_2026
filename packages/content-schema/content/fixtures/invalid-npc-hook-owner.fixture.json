@@ -1,0 +1,7 @@
+{
+  "description": "Resident request hooks must belong to the resident.",
+  "patches": [
+    { "op": "replace", "path": ["residents", 0, "requestHookIds", 0], "value": "tool_repair_intro" }
+  ],
+  "expectedErrors": ["resident nia_moss.requestHookIds references contract tool_repair_intro owned by oren_clay"]
+}
