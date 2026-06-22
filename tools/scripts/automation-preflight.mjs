@@ -48,7 +48,7 @@ runCheck("worktree state is valid for automation role", () => {
 
   if (role === "branch-preparer") {
     if (!originMain) {
-      throw new Error("Missing origin/main. Run git fetch origin main before branch preparation.");
+      throw new Error("Missing origin/main. Repair the automation local environment setup fetch before branch preparation.");
     }
 
     if (!branch && head !== originMain) {
@@ -67,7 +67,7 @@ runCheck("worktree state is valid for automation role", () => {
   }
 
   if (!originMain) {
-    throw new Error("Missing origin/main. Run git fetch origin main first.");
+    throw new Error("Missing origin/main. Repair the automation local environment setup fetch first.");
   }
 
   const ancestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], { allowFailure: true });

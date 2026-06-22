@@ -17,6 +17,10 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 
 ## Autonomous Workflow
 
+For supervised/local agent work, use the fetch and branch commands below. For unattended automation
+jobs, do not run shell network Git inside the job body; follow the Unattended Automation Contract
+instead.
+
 1. Create or select a GitHub Issue before implementation. Every issue must include requirements, non-goals, acceptance criteria, tests, quality gates, and suggested agent.
 2. Fetch remote main immediately before starting work: `git fetch origin main`.
 3. Start each feature from the freshly fetched main ref with a Git worktree branch prefixed with `codex/`: `git switch -c codex/<issue-slug> origin/main`.
@@ -34,6 +38,7 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 - `green-pr-merger` may only inspect and merge existing green PRs. If there are no open PRs, it must exit no-op and must not select issues or implement work.
 - Issue selection, branch preparation, implementation, and PR updates are separate roles. A job must not silently fall through from one role into another.
 - GitHub writes in unattended jobs must use a non-interactive token or the GitHub connector. Do not run `gh auth login` or `gh auth status` inside an unattended job body.
+- Shell network Git commands such as `git fetch`, `git pull`, and `git push` are forbidden inside unattended job bodies. The local environment setup must refresh `origin` remote-tracking refs before the job starts, and PR publication must use the GitHub connector or stop with a blocked result.
 - `implementation-worker` and `pr-updater` must never continue from detached HEAD. They must pass `node tools/scripts/automation-preflight.mjs --role=<role>` before mutable work.
 - If label, comment, or branch setup partially fails, stop before editing files and rollback or mark the issue blocked.
 - Use `node tools/scripts/automation-gate-plan.mjs` to select touched-surface gates, then run the full release gate set before PR readiness when required.
