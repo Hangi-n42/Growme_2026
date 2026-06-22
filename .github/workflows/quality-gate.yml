@@ -41,6 +41,9 @@ jobs:
           pnpm check:no-test-skip
           pnpm check:no-quality-threshold-lowering
 
+      - name: Automation contract
+        run: pnpm check:automation-contract
+
       - name: Unit and simulation smoke
         run: |
           pnpm test:unit

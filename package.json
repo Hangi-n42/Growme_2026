@@ -21,6 +21,9 @@
     "eval:quality": "node tools/scripts/quality-eval.mjs",
     "check:protected-files": "node tools/scripts/protected-files.mjs",
     "check:branch-freshness": "node tools/scripts/branch-freshness.mjs",
+    "check:automation-contract": "node tools/scripts/automation-contract.mjs",
+    "check:automation-preflight": "node tools/scripts/automation-preflight.mjs",
+    "check:automation-gate-plan": "node tools/scripts/automation-gate-plan.mjs",
     "check:no-test-skip": "node tools/scripts/no-test-skip.mjs",
     "check:no-quality-threshold-lowering": "node tools/scripts/no-quality-threshold-lowering.mjs"
   },

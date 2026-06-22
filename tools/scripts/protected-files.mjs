@@ -2,6 +2,7 @@ import { listFiles, listWorkspacePackageManifests, readJson, readText, runCheck 
 
 const protectedWorkflowCommands = [
   "pnpm check:protected-files",
+  "pnpm check:automation-contract",
   "pnpm check:no-test-skip",
   "pnpm check:no-quality-threshold-lowering",
   "pnpm eval:quality"
@@ -20,7 +21,11 @@ runCheck("protected files exist and do not disable gates", () => {
     throw new Error("Protected quality threshold policy is missing.");
   }
 
-  if (!gates.includes("protected_decisions:") || !gates.includes("release_candidate_gates:")) {
+  if (
+    !gates.includes("protected_decisions:") ||
+    !gates.includes("release_candidate_gates:") ||
+    !gates.includes("automation_pipeline_gates:")
+  ) {
     throw new Error("quality-gates.yml must keep protected decisions and release-candidate gates visible.");
   }
 
