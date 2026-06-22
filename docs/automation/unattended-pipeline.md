@@ -12,9 +12,9 @@ Automations are single-purpose jobs. A job must not silently expand into another
 | --- | --- | --- |
 | `green-pr-merger` | List open PRs, inspect required check conclusions, merge PRs that already satisfy the release policy, and exit no-op when there are no open PRs. | MUST NOT select issues, add `codex-working`, create branches, edit files, run implementation gates, or create follow-up work unless the merge itself exposes a blocking P0/P1. |
 | `issue-worker` | Select one ready issue, verify its requirements/non-goals/acceptance criteria/tests/quality gates/suggested agent, add `codex-working`, and write a Korean start comment. | MUST NOT edit files or create commits. |
-| `branch-preparer` | Fetch `origin/main`, create or refresh one `codex/<issue-slug>` branch, and prove freshness. | MUST NOT modify issue labels after branch setup fails. |
+| `branch-preparer` | Use the setup-fetched `origin/main`, create or refresh one local `codex/<issue-slug>` branch, and prove freshness. | MUST NOT run shell network Git such as `git fetch`, `git pull`, or `git push`, and MUST NOT modify issue labels after branch setup fails. |
 | `implementation-worker` | Edit files only after issue selection, branch setup, and freshness preflight pass. | MUST NOT label issues, create branches, merge PRs, or continue from detached HEAD. |
-| `pr-updater` | Re-run freshness checks, summarize gates, push an existing branch, and open/update a PR. | MUST NOT pick a new issue or widen implementation scope. |
+| `pr-updater` | Re-run freshness checks, summarize gates, publish an existing branch through the GitHub connector, and open/update a PR. | MUST NOT run shell `git push`, pick a new issue, or widen implementation scope. |
 
 If an automation starts as `green-pr-merger` and finds zero open PRs, the correct result is a short
 no-op report. It must not fall through to issue selection or implementation.
@@ -45,6 +45,11 @@ node tools/scripts/automation-preflight.mjs --role=implementation-worker
 node tools/scripts/automation-preflight.mjs --role=pr-updater
 ```
 
+The automation local environment setup must refresh `origin` remote-tracking refs before the
+unattended job body starts. Inside the job body, branch-preparer verifies local freshness only. It
+must not run `git fetch origin main`; if `origin/main` or a selected PR branch ref is missing or
+stale, stop with `BLOCKED_STALE_LOCAL_MAIN` and report that setup fetch must be repaired.
+
 The `pnpm check:*` package scripts remain available for humans and CI. Do not invoke bare
 `corepack pnpm ...` from Stage 0 or role preflight inside an unattended job body unless the command
 also sets an approval-free `COREPACK_HOME` in that same shell invocation.
@@ -69,7 +74,7 @@ Multi-step GitHub writes are transactional at the workflow level:
 
 1. Add `codex-working`.
 2. Add the Korean start comment.
-3. Create or refresh the `codex/<issue-slug>` branch.
+3. Create or refresh the local `codex/<issue-slug>` branch from setup-fetched `origin/main`.
 4. Run implementation preflight.
 
 If any step fails:
@@ -101,10 +106,26 @@ Blocked inside unattended job bodies:
 
 - `gh auth login`;
 - `gh auth status`;
+- shell `git fetch`, `git pull`, or `git push`;
 - ad hoc `git switch` from detached HEAD;
 - bare `corepack pnpm ...` startup guards that may touch the default Corepack cache;
 - package install or cache bootstrap;
 - repeated approval retries.
+
+## Connector Publication
+
+Unattended PR publication must not depend on shell `git push`. When local implementation and gates
+pass, publish through the GitHub connector:
+
+1. Create the remote `codex/<issue-slug>` branch from `main` or a verified commit with
+   `create_branch`.
+2. For every changed UTF-8 text file, use `fetch_file` to get the current blob SHA, then
+   `create_file`, `update_file`, or `delete_file` on the remote branch.
+3. Open or update the PR with `create_pull_request` or `update_pull_request`.
+
+If connector-backed publication is unavailable, or if the local diff contains binary changes that
+the connector cannot publish safely, stop with `BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE`. Do not run
+shell `git push` from the unattended job body.
 
 ## Gate Profiles
 
@@ -129,6 +150,8 @@ An unattended automation must stop before implementation when it sees any of the
 - missing non-interactive GitHub access for a role that writes to GitHub;
 - detached HEAD for implementation or PR update work;
 - stale branch that does not include fetched `origin/main`;
+- missing setup-fetched `origin/main`;
 - failed label/comment/branch setup;
+- connector-backed publication unavailable for changed files;
 - approval-required command in the planned job body;
 - unknown changed surface that cannot be mapped to a narrow gate profile.

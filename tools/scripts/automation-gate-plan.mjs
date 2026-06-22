@@ -13,6 +13,7 @@ const gateProfiles = [
       /^tools\/scripts\//u,
       /^\.github\/workflows\//u,
       /^\.codex\/agents\//u,
+      /^\.codex\/environments\//u,
       /^package\.json$/u,
       /^pnpm-workspace\.yaml$/u
     ],

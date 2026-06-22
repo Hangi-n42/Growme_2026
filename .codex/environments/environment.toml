@@ -88,6 +88,16 @@ Invoke-Native `
   -FilePath "corepack" `
   -Arguments @("--version")
 
+if (Test-Path -LiteralPath ".git") {
+  Invoke-Native `
+    -Description "Fetch latest origin refs for unattended automation" `
+    -FilePath "git" `
+    -Arguments @("fetch", "--prune", "origin")
+}
+else {
+  Write-Warning "No .git directory found; skipping origin/main fetch."
+}
+
 if (Test-Path -LiteralPath "pnpm-lock.yaml") {
   Invoke-Native `
     -Description "Install dependencies with frozen lockfile" `

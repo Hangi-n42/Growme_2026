@@ -30,7 +30,7 @@ runCheck("origin/main has been fetched locally", () => {
   const originMain = git(["rev-parse", "--verify", "origin/main"]);
 
   if (!originMain.ok) {
-    throw new Error("Missing origin/main. Run `git fetch origin main` first.");
+    throw new Error("Missing origin/main. Repair the automation local environment setup fetch first.");
   }
 });
 
@@ -43,7 +43,7 @@ runCheck("HEAD contains the fetched origin/main commit", () => {
     throw new Error(
       `HEAD ${current.stdout || "unknown"} does not include origin/main ${
         originMain.stdout || "unknown"
-      }. Run git fetch origin main and rebase or recreate the branch from origin/main.`
+      }. Repair setup fetch if stale, then rebase or recreate the branch from origin/main.`
     );
   }
 });
