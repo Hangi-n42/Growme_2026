@@ -33,21 +33,24 @@ commands. A missing token or connector is a preflight failure, not a retry loop.
 
 ## Preflight
 
-Every unattended job must run the narrowest preflight for its role before doing mutable work:
+Every unattended job must run the narrowest preflight for its role before doing mutable work.
+Inside a Codex App unattended job body, run the guard scripts directly with `node` so the job does
+not touch Corepack package-manager caches during startup:
 
 ```bash
-pnpm check:automation-preflight -- --role=green-pr-merger
-pnpm check:automation-preflight -- --role=issue-worker
-pnpm check:automation-preflight -- --role=branch-preparer
-pnpm check:automation-preflight -- --role=implementation-worker
-pnpm check:automation-preflight -- --role=pr-updater
+node tools/scripts/automation-preflight.mjs --role=green-pr-merger
+node tools/scripts/automation-preflight.mjs --role=issue-worker
+node tools/scripts/automation-preflight.mjs --role=branch-preparer
+node tools/scripts/automation-preflight.mjs --role=implementation-worker
+node tools/scripts/automation-preflight.mjs --role=pr-updater
 ```
 
-Local Codex App worktrees should invoke these through Corepack:
+The `pnpm check:*` package scripts remain available for humans and CI. Do not invoke bare
+`corepack pnpm ...` from Stage 0 or role preflight inside an unattended job body unless the command
+also sets an approval-free `COREPACK_HOME` in that same shell invocation.
 
-```bash
-corepack pnpm@10.12.1 run check:automation-preflight -- --role=implementation-worker
-```
+For the contract check, use `node tools/scripts/automation-contract.mjs`. For branch freshness, use
+`node tools/scripts/branch-freshness.mjs`.
 
 Implementation preflight requires:
 
@@ -88,7 +91,9 @@ downloads, or other elevated access must be satisfied before the job body starts
 Allowed inside unattended job bodies:
 
 - read-only repo inspection;
-- package scripts that use already-installed dependencies and local caches;
+- repo-local guard scripts invoked directly through `node tools/scripts/*.mjs`;
+- package scripts only after their package-manager cache access has already been proven
+  approval-free for the same job body;
 - connector-backed GitHub reads/writes;
 - git commands that operate inside a prepared branch without requesting approval.
 
@@ -97,21 +102,24 @@ Blocked inside unattended job bodies:
 - `gh auth login`;
 - `gh auth status`;
 - ad hoc `git switch` from detached HEAD;
+- bare `corepack pnpm ...` startup guards that may touch the default Corepack cache;
 - package install or cache bootstrap;
 - repeated approval retries.
 
 ## Gate Profiles
 
 Use touched-surface gates during implementation and full release gates for PR readiness.
+For unattended gate planning, prefer direct `node` guard entrypoints:
 
 ```bash
-pnpm check:automation-gate-plan
-pnpm check:automation-gate-plan -- --full
+node tools/scripts/automation-gate-plan.mjs
+node tools/scripts/automation-gate-plan.mjs --full
 ```
 
 Minimum touched-surface gates always include protected checks. Full release gates are the complete
-`required_scripts` list from `quality-gates.yml`. Gate profiles must only add coverage. They must not
-weaken `QUALITY_BAR.md`, release thresholds, protected decisions, or required release-candidate gates.
+`required_scripts` list from `quality-gates.yml`, mapped to approval-free `node tools/scripts/*.mjs`
+commands for unattended runs. Gate profiles must only add coverage. They must not weaken
+`QUALITY_BAR.md`, release thresholds, protected decisions, or required release-candidate gates.
 
 ## Required Fail-Fast Outcomes
 

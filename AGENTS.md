@@ -34,9 +34,9 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 - `green-pr-merger` may only inspect and merge existing green PRs. If there are no open PRs, it must exit no-op and must not select issues or implement work.
 - Issue selection, branch preparation, implementation, and PR updates are separate roles. A job must not silently fall through from one role into another.
 - GitHub writes in unattended jobs must use a non-interactive token or the GitHub connector. Do not run `gh auth login` or `gh auth status` inside an unattended job body.
-- `implementation-worker` and `pr-updater` must never continue from detached HEAD. They must pass `corepack pnpm@10.12.1 run check:automation-preflight -- --role=<role>` before mutable work.
+- `implementation-worker` and `pr-updater` must never continue from detached HEAD. They must pass `node tools/scripts/automation-preflight.mjs --role=<role>` before mutable work.
 - If label, comment, or branch setup partially fails, stop before editing files and rollback or mark the issue blocked.
-- Use `corepack pnpm@10.12.1 run check:automation-gate-plan` to select touched-surface gates, then run the full release gate set before PR readiness when required.
+- Use `node tools/scripts/automation-gate-plan.mjs` to select touched-surface gates, then run the full release gate set before PR readiness when required.
 
 ## Communication policy
 
