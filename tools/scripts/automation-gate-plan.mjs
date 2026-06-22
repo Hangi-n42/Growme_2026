@@ -17,65 +17,83 @@ const gateProfiles = [
       /^pnpm-workspace\.yaml$/u
     ],
     commands: [
-      "pnpm lint",
-      "pnpm check:automation-contract",
-      "pnpm check:protected-files",
-      "pnpm check:no-test-skip",
-      "pnpm check:no-quality-threshold-lowering"
+      "node tools/scripts/lint.mjs",
+      "node tools/scripts/automation-contract.mjs",
+      "node tools/scripts/protected-files.mjs",
+      "node tools/scripts/no-test-skip.mjs",
+      "node tools/scripts/no-quality-threshold-lowering.mjs"
     ]
   },
   {
     name: "documentation",
     matches: [/^docs\//u, /^AGENTS\.md$/u, /^QUALITY_BAR\.md$/u, /^\.github\/PULL_REQUEST_TEMPLATE\.md$/u],
     commands: [
-      "pnpm lint",
-      "pnpm check:automation-contract",
-      "pnpm check:protected-files",
-      "pnpm check:no-test-skip",
-      "pnpm check:no-quality-threshold-lowering"
+      "node tools/scripts/lint.mjs",
+      "node tools/scripts/automation-contract.mjs",
+      "node tools/scripts/protected-files.mjs",
+      "node tools/scripts/no-test-skip.mjs",
+      "node tools/scripts/no-quality-threshold-lowering.mjs"
     ]
   },
   {
     name: "sim-core",
     matches: [/^packages\/sim-core\//u],
-    commands: ["pnpm lint", "pnpm typecheck", "pnpm test:unit", "pnpm test:sim", "pnpm test:save-load"]
+    commands: [
+      "node tools/scripts/lint.mjs",
+      "node tools/scripts/typecheck.mjs",
+      "node tools/scripts/unit-smoke.mjs",
+      "node tools/scripts/sim-smoke.mjs",
+      "node tools/scripts/save-load-smoke.mjs"
+    ]
   },
   {
     name: "content",
     matches: [/^packages\/content-schema\//u, /^tools\/content-validator\//u, /^content\//u],
-    commands: ["pnpm lint", "pnpm typecheck", "pnpm test:content"]
+    commands: ["node tools/scripts/lint.mjs", "node tools/scripts/typecheck.mjs", "node tools/scripts/content-smoke.mjs"]
   },
   {
     name: "economy",
     matches: [/^tools\/economy-sim\//u],
-    commands: ["pnpm lint", "pnpm typecheck", "pnpm test:economy", "pnpm sim:7days", "pnpm sim:30days"]
+    commands: [
+      "node tools/scripts/lint.mjs",
+      "node tools/scripts/typecheck.mjs",
+      "node tools/scripts/economy-smoke.mjs",
+      "node tools/scripts/sim-runner.mjs 7",
+      "node tools/scripts/sim-runner.mjs 30"
+    ]
   },
   {
     name: "npc",
     matches: [/^tools\/npc-sim\//u],
-    commands: ["pnpm lint", "pnpm typecheck", "pnpm test:npc"]
+    commands: ["node tools/scripts/lint.mjs", "node tools/scripts/typecheck.mjs", "node tools/scripts/npc-smoke.mjs"]
   },
   {
     name: "browser",
     matches: [/^apps\/game-web\//u],
-    commands: ["pnpm lint", "pnpm typecheck", "pnpm test:e2e", "pnpm test:first-3-days", "pnpm test:perf-smoke"]
+    commands: [
+      "node tools/scripts/lint.mjs",
+      "node tools/scripts/typecheck.mjs",
+      "node tools/scripts/e2e-smoke.mjs",
+      "node tools/scripts/first-3-days-smoke.mjs",
+      "node tools/scripts/perf-smoke.mjs"
+    ]
   },
   {
     name: "quality-eval",
     matches: [/^tools\/quality-eval\//u, /^quality-gates\.yml$/u],
-    commands: ["pnpm lint", "pnpm typecheck", "pnpm eval:quality"]
+    commands: ["node tools/scripts/lint.mjs", "node tools/scripts/typecheck.mjs", "node tools/scripts/quality-eval.mjs"]
   }
 ];
 
 const protectedCommands = [
-  "pnpm check:protected-files",
-  "pnpm check:no-test-skip",
-  "pnpm check:no-quality-threshold-lowering"
+  "node tools/scripts/protected-files.mjs",
+  "node tools/scripts/no-test-skip.mjs",
+  "node tools/scripts/no-quality-threshold-lowering.mjs"
 ];
 
 runCheck("automation gate plan can classify changed files", () => {
   const changedFiles = full ? [] : listChangedFiles();
-  const fullReleaseCommands = extractRequiredCommands(readText("quality-gates.yml"));
+  const fullReleaseCommands = extractRequiredCommands(readText("quality-gates.yml")).map(toApprovalFreeCommand);
   const selectedProfiles = full ? ["full-release"] : selectProfiles(changedFiles);
   const commands = full ? fullReleaseCommands : selectCommands(selectedProfiles);
 
@@ -174,6 +192,36 @@ function extractRequiredCommands(gatesText) {
   }
 
   return [...match.groups.body.matchAll(/^\s*-\s+(pnpm [^\r\n]+)/gmu)].map((commandMatch) => commandMatch[1]);
+}
+
+function toApprovalFreeCommand(command) {
+  const commandMap = {
+    "pnpm lint": "node tools/scripts/lint.mjs",
+    "pnpm typecheck": "node tools/scripts/typecheck.mjs",
+    "pnpm test:unit": "node tools/scripts/unit-smoke.mjs",
+    "pnpm test:sim": "node tools/scripts/sim-smoke.mjs",
+    "pnpm test:npc": "node tools/scripts/npc-smoke.mjs",
+    "pnpm test:economy": "node tools/scripts/economy-smoke.mjs",
+    "pnpm test:content": "node tools/scripts/content-smoke.mjs",
+    "pnpm test:save-load": "node tools/scripts/save-load-smoke.mjs",
+    "pnpm test:e2e": "node tools/scripts/e2e-smoke.mjs",
+    "pnpm test:first-3-days": "node tools/scripts/first-3-days-smoke.mjs",
+    "pnpm test:perf-smoke": "node tools/scripts/perf-smoke.mjs",
+    "pnpm sim:7days": "node tools/scripts/sim-runner.mjs 7",
+    "pnpm sim:30days": "node tools/scripts/sim-runner.mjs 30",
+    "pnpm eval:quality": "node tools/scripts/quality-eval.mjs",
+    "pnpm check:protected-files": "node tools/scripts/protected-files.mjs",
+    "pnpm check:automation-contract": "node tools/scripts/automation-contract.mjs",
+    "pnpm check:no-test-skip": "node tools/scripts/no-test-skip.mjs",
+    "pnpm check:no-quality-threshold-lowering": "node tools/scripts/no-quality-threshold-lowering.mjs"
+  };
+
+  const mapped = commandMap[command];
+  if (!mapped) {
+    throw new Error(`No approval-free command mapping for ${command}.`);
+  }
+
+  return mapped;
 }
 
 function parseArgs(argv) {

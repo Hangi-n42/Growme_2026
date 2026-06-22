@@ -15,8 +15,10 @@ const requiredContractText = [
   "Partial Write Policy",
   "Approval-Free Shell Contract",
   "Gate Profiles",
-  "pnpm check:automation-preflight",
-  "pnpm check:automation-gate-plan"
+  "node tools/scripts/automation-contract.mjs",
+  "node tools/scripts/automation-preflight.mjs",
+  "node tools/scripts/automation-gate-plan.mjs",
+  "bare `corepack pnpm ...`"
 ];
 
 const requiredScripts = [
