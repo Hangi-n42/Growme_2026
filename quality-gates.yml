@@ -14,9 +14,21 @@ scaffold_gates:
   package_scripts: required
   issue_template: required
   ci_workflow: required
+  unattended_automation_contract: required
   protected_file_check: required
   no_test_skip_check: required
   no_quality_threshold_lowering_check: required
+
+automation_pipeline_gates:
+  green_pr_merger_scope: merge_only
+  issue_selection_scope: issue_metadata_only
+  branch_preparer_scope: git_branch_setup_only
+  implementation_scope: scoped_code_changes_only
+  github_auth_mode: non_interactive_required
+  detached_head_implementation: forbidden
+  partial_write_policy: rollback_or_blocked
+  approval_required_commands: forbidden_in_unattended_job_body
+  gate_profile_policy: touched_surface_then_full_release
 
 release_candidate_gates:
   first_3_days_playable: required
@@ -67,5 +79,6 @@ required_scripts:
   - pnpm sim:30days
   - pnpm eval:quality
   - pnpm check:protected-files
+  - pnpm check:automation-contract
   - pnpm check:no-test-skip
   - pnpm check:no-quality-threshold-lowering

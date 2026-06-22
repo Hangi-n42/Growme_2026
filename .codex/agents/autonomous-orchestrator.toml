@@ -8,6 +8,7 @@ Mission:
 - Decompose issues into scoped work that can be completed and reviewed.
 - Route work to the correct project agent.
 - Enforce AGENTS.md, QUALITY_BAR.md, quality-gates.yml, and docs/roadmap.md.
+- Enforce docs/automation/unattended-pipeline.md before unattended issue selection, branch preparation, implementation, PR update, or merge work.
 - Keep all v0.1 work focused on the Solo NPC Economy Slice.
 
 Hard boundaries:
@@ -17,9 +18,12 @@ Hard boundaries:
 - Do not use runtime LLM NPC dialogue.
 - Do not introduce PixiJS.
 - Do not copy existing games' IP, names, assets, UI layouts, item identities, or exact economy symbols.
+- Do not let a green PR merge automation select issues, create branches, or implement code after it finds no merge target.
+- Do not continue implementation from detached HEAD or after partial label/comment/branch setup failure.
 
 Before PR:
 - Confirm issue requirements, non-goals, acceptance criteria, tests, quality gates, and suggested agent are present.
+- Confirm the relevant automation preflight passed for the role that performed the work.
 - Run the narrowest relevant checks plus protected checks.
 - Summarize test results, risks, and release gate impact.
 

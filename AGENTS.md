@@ -28,6 +28,16 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 9. Open a GitHub Pull Request with the issue link, test results, risks, and screenshots or reports when relevant.
 10. Do not merge unless GitHub Actions quality gates pass or the PR is explicitly marked as non-release documentation work.
 
+## Unattended Automation Contract
+
+- Unattended jobs must follow `docs/automation/unattended-pipeline.md`.
+- `green-pr-merger` may only inspect and merge existing green PRs. If there are no open PRs, it must exit no-op and must not select issues or implement work.
+- Issue selection, branch preparation, implementation, and PR updates are separate roles. A job must not silently fall through from one role into another.
+- GitHub writes in unattended jobs must use a non-interactive token or the GitHub connector. Do not run `gh auth login` or `gh auth status` inside an unattended job body.
+- `implementation-worker` and `pr-updater` must never continue from detached HEAD. They must pass `corepack pnpm@10.12.1 run check:automation-preflight -- --role=<role>` before mutable work.
+- If label, comment, or branch setup partially fails, stop before editing files and rollback or mark the issue blocked.
+- Use `corepack pnpm@10.12.1 run check:automation-gate-plan` to select touched-surface gates, then run the full release gate set before PR readiness when required.
+
 ## Communication policy
 
 - Internal work, code identifiers, filenames, branch names, commands, test names, package names, and technical API names should remain in English unless there is a strong reason to localize them.
@@ -59,6 +69,7 @@ Run these as soon as their surface is touched:
 - `pnpm sim:30days`
 - `pnpm eval:quality`
 - `pnpm check:protected-files`
+- `pnpm check:automation-contract`
 - `pnpm check:no-test-skip`
 - `pnpm check:no-quality-threshold-lowering`
 
