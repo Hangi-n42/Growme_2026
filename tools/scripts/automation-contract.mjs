@@ -5,7 +5,7 @@ const contractPath = "docs/automation/unattended-pipeline.md";
 const requiredContractText = [
   "green-pr-merger",
   "issue-worker",
-  "branch-preparer",
+  "workspace-verifier",
   "implementation-worker",
   "pr-updater",
   "GITHUB_TOKEN",
@@ -17,6 +17,7 @@ const requiredContractText = [
   "shell `git fetch`, `git pull`, or `git push`",
   "Git metadata writes",
   "--allow-detached",
+  "`branch-preparer` is obsolete",
   "Connector Publication",
   "BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE",
   "Gate Profiles",
@@ -60,6 +61,7 @@ runCheck("automation contract is wired into quality policy", () => {
   for (const requiredText of [
     "automation_pipeline_gates:",
     "green_pr_merger_scope: merge_only",
+    "workspace_verifier_scope: local_ref_verification_only",
     "partial_write_policy: rollback_or_blocked",
     "detached_head_connector_implementation: allowed_with_preflight",
     "git_metadata_writes: forbidden_in_unattended_job_body"

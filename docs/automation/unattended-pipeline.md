@@ -12,7 +12,7 @@ Automations are single-purpose jobs. A job must not silently expand into another
 | --- | --- | --- |
 | `green-pr-merger` | List open PRs, inspect required check conclusions, merge PRs that already satisfy the release policy, and exit no-op when there are no open PRs. | MUST NOT select issues, add `codex-working`, create branches, edit files, run implementation gates, or create follow-up work unless the merge itself exposes a blocking P0/P1. |
 | `issue-worker` | Select one ready issue, verify its requirements/non-goals/acceptance criteria/tests/quality gates/suggested agent, add `codex-working`, and write a Korean start comment. | MUST NOT edit files or create commits. |
-| `branch-preparer` | Use the setup-fetched `origin/main`, verify the workspace is suitable for the planned remote `codex/<issue-slug>` branch, and prove freshness. | MUST NOT run shell network Git such as `git fetch`, `git pull`, or `git push`; MUST NOT run Git metadata writes such as `git switch`, `git checkout`, `git branch`, `git add`, `git commit`, or `git reset`; and MUST NOT modify issue labels after workspace setup fails. |
+| `workspace-verifier` | Use the setup-fetched `origin/main`, verify the workspace is suitable for editing, and record the planned remote `codex/<issue-slug>` branch name. | MUST NOT create, switch, checkout, or update a local branch; MUST NOT run shell network Git; MUST NOT run Git metadata writes; and MUST NOT modify issue labels after workspace setup fails. |
 | `implementation-worker` | Edit files only after issue selection, workspace setup, and freshness preflight pass. It may run from detached HEAD or a setup-fetched `main` workspace only in connector-publish mode. | MUST NOT label issues, create local branches, commit, merge PRs, or run Git metadata writes. |
 | `pr-updater` | Re-run freshness checks, summarize gates, publish the local diff through the GitHub connector, and open/update a PR. | MUST NOT run shell `git push`, `git add`, `git commit`, pick a new issue, or widen implementation scope. |
 
@@ -40,7 +40,7 @@ not touch Corepack package-manager caches during startup:
 ```bash
 node tools/scripts/automation-preflight.mjs --role=green-pr-merger
 node tools/scripts/automation-preflight.mjs --role=issue-worker
-node tools/scripts/automation-preflight.mjs --role=branch-preparer
+node tools/scripts/automation-preflight.mjs --role=workspace-verifier
 node tools/scripts/automation-preflight.mjs --role=implementation-worker
 node tools/scripts/automation-preflight.mjs --role=implementation-worker --allow-detached
 node tools/scripts/automation-preflight.mjs --role=pr-updater
@@ -48,9 +48,13 @@ node tools/scripts/automation-preflight.mjs --role=pr-updater --allow-detached -
 ```
 
 The automation local environment setup must refresh `origin` remote-tracking refs before the
-unattended job body starts. Inside the job body, branch-preparer verifies local freshness only. It
-must not run `git fetch origin main`; if `origin/main` or a selected PR branch ref is missing or
-stale, stop with `BLOCKED_STALE_LOCAL_MAIN` and report that setup fetch must be repaired.
+unattended job body starts. Inside the job body, `workspace-verifier` verifies local freshness only.
+It must not fetch, create a local branch, or switch branches; if `origin/main` or a selected PR
+branch ref is missing or stale, stop with `BLOCKED_STALE_LOCAL_MAIN` and report that setup fetch
+must be repaired.
+
+`branch-preparer` is obsolete for unattended Codex App jobs. If a stale prompt attempts to run that
+role, preflight must fail before any local branch command can run.
 
 The `pnpm check:*` package scripts remain available for humans and CI. Do not invoke bare
 `corepack pnpm ...` from Stage 0 or role preflight inside an unattended job body unless the command
