@@ -5,6 +5,7 @@ const allowedRoles = new Set([
   "green-pr-merger",
   "issue-worker",
   "branch-preparer",
+  "workspace-verifier",
   "implementation-worker",
   "pr-updater",
   "quality-gate"
@@ -48,12 +49,19 @@ runCheck("worktree state is valid for automation role", () => {
   }
 
   if (role === "branch-preparer") {
+    throw new Error("branch-preparer is obsolete for unattended Codex App jobs. Use workspace-verifier and do not create a local branch.");
+  }
+
+  if (role === "workspace-verifier") {
     if (!originMain) {
-      throw new Error("Missing origin/main. Repair the automation local environment setup fetch before branch preparation.");
+      throw new Error("Missing origin/main. Repair the automation local environment setup fetch before workspace verification.");
     }
 
-    if (!branch && head !== originMain) {
-      throw new Error("Detached branch-preparer worktree must point at fetched origin/main.");
+    const workspaceAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], {
+      allowFailure: true
+    });
+    if (!workspaceAncestor.ok) {
+      throw new Error("Workspace HEAD does not include setup-fetched origin/main.");
     }
 
     return;
