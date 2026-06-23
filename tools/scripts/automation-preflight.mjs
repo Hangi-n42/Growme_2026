@@ -14,6 +14,7 @@ const args = parseArgs(process.argv.slice(2));
 const role = args.role ?? process.env.AUTOMATION_ROLE ?? "implementation-worker";
 const githubWriteMode = args["github-write"] ?? defaultGitHubWriteMode(role);
 const allowDirty = Boolean(args["allow-dirty"]);
+const allowDetached = Boolean(args["allow-detached"]);
 
 runCheck("automation role is known", () => {
   if (!allowedRoles.has(role)) {
@@ -58,16 +59,36 @@ runCheck("worktree state is valid for automation role", () => {
     return;
   }
 
+  if (!originMain) {
+    throw new Error("Missing origin/main. Repair the automation local environment setup fetch first.");
+  }
+
   if (!branch) {
-    throw new Error("Detached HEAD is forbidden for implementation-worker and pr-updater.");
+    if (!allowDetached) {
+      throw new Error("Detached HEAD requires --allow-detached connector-publish mode for implementation-worker and pr-updater.");
+    }
+
+    const detachedAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], { allowFailure: true });
+    if (!detachedAncestor.ok) {
+      throw new Error("Detached HEAD does not include setup-fetched origin/main.");
+    }
+
+    return;
   }
 
   if (!branch.startsWith("codex/")) {
-    throw new Error(`Expected a codex/ branch, got ${branch}.`);
-  }
+    if (allowDetached && ["main", "master"].includes(branch)) {
+      const connectorWorkspaceAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], {
+        allowFailure: true
+      });
+      if (!connectorWorkspaceAncestor.ok) {
+        throw new Error(`${branch} workspace does not include setup-fetched origin/main.`);
+      }
 
-  if (!originMain) {
-    throw new Error("Missing origin/main. Repair the automation local environment setup fetch first.");
+      return;
+    }
+
+    throw new Error(`Expected a codex/ branch, got ${branch}.`);
   }
 
   const ancestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], { allowFailure: true });

@@ -22,10 +22,11 @@ scaffold_gates:
 automation_pipeline_gates:
   green_pr_merger_scope: merge_only
   issue_selection_scope: issue_metadata_only
-  branch_preparer_scope: git_branch_setup_only
+  branch_preparer_scope: local_ref_verification_only
   implementation_scope: scoped_code_changes_only
   github_auth_mode: non_interactive_required
-  detached_head_implementation: forbidden
+  detached_head_connector_implementation: allowed_with_preflight
+  git_metadata_writes: forbidden_in_unattended_job_body
   partial_write_policy: rollback_or_blocked
   approval_required_commands: forbidden_in_unattended_job_body
   gate_profile_policy: touched_surface_then_full_release
