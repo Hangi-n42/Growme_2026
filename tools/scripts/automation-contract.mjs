@@ -15,6 +15,8 @@ const requiredContractText = [
   "Partial Write Policy",
   "Approval-Free Shell Contract",
   "shell `git fetch`, `git pull`, or `git push`",
+  "Git metadata writes",
+  "--allow-detached",
   "Connector Publication",
   "BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE",
   "Gate Profiles",
@@ -59,7 +61,8 @@ runCheck("automation contract is wired into quality policy", () => {
     "automation_pipeline_gates:",
     "green_pr_merger_scope: merge_only",
     "partial_write_policy: rollback_or_blocked",
-    "detached_head_implementation: forbidden"
+    "detached_head_connector_implementation: allowed_with_preflight",
+    "git_metadata_writes: forbidden_in_unattended_job_body"
   ]) {
     if (!gates.includes(requiredText)) {
       throw new Error(`quality-gates.yml is missing ${requiredText}`);

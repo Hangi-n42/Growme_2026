@@ -12,9 +12,9 @@ Automations are single-purpose jobs. A job must not silently expand into another
 | --- | --- | --- |
 | `green-pr-merger` | List open PRs, inspect required check conclusions, merge PRs that already satisfy the release policy, and exit no-op when there are no open PRs. | MUST NOT select issues, add `codex-working`, create branches, edit files, run implementation gates, or create follow-up work unless the merge itself exposes a blocking P0/P1. |
 | `issue-worker` | Select one ready issue, verify its requirements/non-goals/acceptance criteria/tests/quality gates/suggested agent, add `codex-working`, and write a Korean start comment. | MUST NOT edit files or create commits. |
-| `branch-preparer` | Use the setup-fetched `origin/main`, create or refresh one local `codex/<issue-slug>` branch, and prove freshness. | MUST NOT run shell network Git such as `git fetch`, `git pull`, or `git push`, and MUST NOT modify issue labels after branch setup fails. |
-| `implementation-worker` | Edit files only after issue selection, branch setup, and freshness preflight pass. | MUST NOT label issues, create branches, merge PRs, or continue from detached HEAD. |
-| `pr-updater` | Re-run freshness checks, summarize gates, publish an existing branch through the GitHub connector, and open/update a PR. | MUST NOT run shell `git push`, pick a new issue, or widen implementation scope. |
+| `branch-preparer` | Use the setup-fetched `origin/main`, verify the workspace is suitable for the planned remote `codex/<issue-slug>` branch, and prove freshness. | MUST NOT run shell network Git such as `git fetch`, `git pull`, or `git push`; MUST NOT run Git metadata writes such as `git switch`, `git checkout`, `git branch`, `git add`, `git commit`, or `git reset`; and MUST NOT modify issue labels after workspace setup fails. |
+| `implementation-worker` | Edit files only after issue selection, workspace setup, and freshness preflight pass. It may run from detached HEAD or a setup-fetched `main` workspace only in connector-publish mode. | MUST NOT label issues, create local branches, commit, merge PRs, or run Git metadata writes. |
+| `pr-updater` | Re-run freshness checks, summarize gates, publish the local diff through the GitHub connector, and open/update a PR. | MUST NOT run shell `git push`, `git add`, `git commit`, pick a new issue, or widen implementation scope. |
 
 If an automation starts as `green-pr-merger` and finds zero open PRs, the correct result is a short
 no-op report. It must not fall through to issue selection or implementation.
@@ -42,7 +42,9 @@ node tools/scripts/automation-preflight.mjs --role=green-pr-merger
 node tools/scripts/automation-preflight.mjs --role=issue-worker
 node tools/scripts/automation-preflight.mjs --role=branch-preparer
 node tools/scripts/automation-preflight.mjs --role=implementation-worker
+node tools/scripts/automation-preflight.mjs --role=implementation-worker --allow-detached
 node tools/scripts/automation-preflight.mjs --role=pr-updater
+node tools/scripts/automation-preflight.mjs --role=pr-updater --allow-detached --allow-dirty
 ```
 
 The automation local environment setup must refresh `origin` remote-tracking refs before the
@@ -57,16 +59,18 @@ also sets an approval-free `COREPACK_HOME` in that same shell invocation.
 For the contract check, use `node tools/scripts/automation-contract.mjs`. For branch freshness, use
 `node tools/scripts/branch-freshness.mjs`.
 
-Implementation preflight requires:
+Implementation preflight requires either a named local branch or connector-publish detached mode:
 
-- a named branch;
-- branch name prefix `codex/`;
+- a named branch with prefix `codex/`; or
+- `--allow-detached` with `origin/main` as an ancestor of `HEAD` from detached HEAD or a setup-fetched `main`/`master` workspace;
 - fetched `origin/main`;
 - `origin/main` is an ancestor of `HEAD`;
 - clean worktree unless the caller passes `--allow-dirty` for a post-edit gate run.
 
-Detached HEAD is allowed only for read-only inspection roles. It is forbidden for
-`implementation-worker` and `pr-updater`.
+Detached HEAD and setup-fetched `main`/`master` workspaces are allowed for read-only inspection roles
+and for connector-publish implementation or PR update roles that pass `--allow-detached`. This is
+the default safe path for Codex App worktree sandboxes where Git metadata writes require runtime
+approval.
 
 ## Partial Write Policy
 
@@ -74,8 +78,8 @@ Multi-step GitHub writes are transactional at the workflow level:
 
 1. Add `codex-working`.
 2. Add the Korean start comment.
-3. Create or refresh the local `codex/<issue-slug>` branch from setup-fetched `origin/main`.
-4. Run implementation preflight.
+3. Verify local refs and planned remote branch name from setup-fetched `origin/main`.
+4. Run implementation preflight, using `--allow-detached` when the Codex App worktree is detached.
 
 If any step fails:
 
@@ -107,21 +111,23 @@ Blocked inside unattended job bodies:
 - `gh auth login`;
 - `gh auth status`;
 - shell `git fetch`, `git pull`, or `git push`;
-- ad hoc `git switch` from detached HEAD;
+- Git metadata writes such as `git switch`, `git checkout`, `git branch`, `git add`, `git commit`, or `git reset`;
 - bare `corepack pnpm ...` startup guards that may touch the default Corepack cache;
 - package install or cache bootstrap;
 - repeated approval retries.
 
 ## Connector Publication
 
-Unattended PR publication must not depend on shell `git push`. When local implementation and gates
-pass, publish through the GitHub connector:
+Unattended PR publication must not depend on local commits or shell `git push`. When local
+implementation and gates pass, publish the working-tree diff through the GitHub connector:
 
 1. Create the remote `codex/<issue-slug>` branch from `main` or a verified commit with
    `create_branch`.
-2. For every changed UTF-8 text file, use `fetch_file` to get the current blob SHA, then
+2. Use read-only local Git commands such as `git diff --name-status origin/main` to enumerate the
+   changed files. Do not run `git add` or `git commit`.
+3. For every changed UTF-8 text file, use `fetch_file` to get the current blob SHA, then
    `create_file`, `update_file`, or `delete_file` on the remote branch.
-3. Open or update the PR with `create_pull_request` or `update_pull_request`.
+4. Open or update the PR with `create_pull_request` or `update_pull_request`.
 
 If connector-backed publication is unavailable, or if the local diff contains binary changes that
 the connector cannot publish safely, stop with `BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE`. Do not run
@@ -148,10 +154,10 @@ An unattended automation must stop before implementation when it sees any of the
 
 - no open PRs for `green-pr-merger`;
 - missing non-interactive GitHub access for a role that writes to GitHub;
-- detached HEAD for implementation or PR update work;
+- detached HEAD for implementation or PR update work without `--allow-detached`;
 - stale branch that does not include fetched `origin/main`;
 - missing setup-fetched `origin/main`;
-- failed label/comment/branch setup;
+- failed label/comment/workspace setup;
 - connector-backed publication unavailable for changed files;
 - approval-required command in the planned job body;
 - unknown changed surface that cannot be mapped to a narrow gate profile.

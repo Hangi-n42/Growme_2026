@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { runCheck } from "./lib/repo.mjs";
 
+const allowDetached = process.argv.slice(2).includes("--allow-detached");
+
 function git(args) {
   const result = spawnSync("git", args, {
     encoding: "utf8",
@@ -14,11 +16,19 @@ function git(args) {
   };
 }
 
-runCheck("current branch is a codex work branch", () => {
+runCheck("current branch is compatible with freshness mode", () => {
   const branch = git(["branch", "--show-current"]);
 
   if (!branch.ok || branch.stdout.length === 0) {
-    throw new Error("HEAD must be on a named branch before starting issue work.");
+    if (allowDetached) {
+      return;
+    }
+
+    throw new Error("HEAD must be on a named branch before starting issue work unless --allow-detached is used.");
+  }
+
+  if (allowDetached && ["main", "master"].includes(branch.stdout)) {
+    return;
   }
 
   if (!branch.stdout.startsWith("codex/")) {

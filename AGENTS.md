@@ -38,8 +38,9 @@ instead.
 - `green-pr-merger` may only inspect and merge existing green PRs. If there are no open PRs, it must exit no-op and must not select issues or implement work.
 - Issue selection, branch preparation, implementation, and PR updates are separate roles. A job must not silently fall through from one role into another.
 - GitHub writes in unattended jobs must use a non-interactive token or the GitHub connector. Do not run `gh auth login` or `gh auth status` inside an unattended job body.
-- Shell network Git commands such as `git fetch`, `git pull`, and `git push` are forbidden inside unattended job bodies. The local environment setup must refresh `origin` remote-tracking refs before the job starts, and PR publication must use the GitHub connector or stop with a blocked result.
-- `implementation-worker` and `pr-updater` must never continue from detached HEAD. They must pass `node tools/scripts/automation-preflight.mjs --role=<role>` before mutable work.
+- Shell network Git commands such as `git fetch`, `git pull`, and `git push` are forbidden inside unattended job bodies. Git metadata writes such as `git switch`, `git checkout`, `git branch`, `git add`, `git commit`, and `git reset` are also forbidden inside unattended job bodies.
+- The local environment setup must refresh `origin` remote-tracking refs before the job starts, and PR publication must use the GitHub connector or stop with a blocked result.
+- `implementation-worker` and `pr-updater` must pass `node tools/scripts/automation-preflight.mjs --role=<role>` before mutable work. In Codex App detached worktrees, they must pass the same preflight with `--allow-detached` and publish through the GitHub connector instead of creating local branches or commits.
 - If label, comment, or branch setup partially fails, stop before editing files and rollback or mark the issue blocked.
 - Use `node tools/scripts/automation-gate-plan.mjs` to select touched-surface gates, then run the full release gate set before PR readiness when required.
 
