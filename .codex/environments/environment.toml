@@ -11,6 +11,8 @@ Write-Host "== Codex local setup: Growme_2026 =="
 # This setup script is intended for Codex App on native Windows PowerShell.
 # It avoids global Corepack shims because they can fail under C:\Program Files\nodejs.
 # Always call pnpm through: corepack pnpm@<version> ...
+# It also loads the repository automation token from the local Codex secrets directory.
+# Never print token values.
 
 if (-not (Test-Path -LiteralPath "package.json")) {
   Write-Host "No package.json found. Skipping dependency setup."
@@ -47,6 +49,77 @@ function Invoke-Native {
 
     throw "$Description failed with exit code $exitCode."
   }
+}
+
+$repoTokenPath = "C:\Users\dsl\.codex\secrets\growme_gh_token.txt"
+$maintenanceTokenPath = "C:\Users\dsl\.codex\secrets\growme_maintenance_gh_token.txt"
+
+if (-not (Test-Path -LiteralPath $repoTokenPath)) {
+  throw "Missing automation GitHub token file: $repoTokenPath"
+}
+
+$repoToken = (Get-Content -LiteralPath $repoTokenPath -Raw).Trim()
+
+if ([string]::IsNullOrWhiteSpace($repoToken)) {
+  throw "Automation GitHub token file is empty: $repoTokenPath"
+}
+
+$env:GH_TOKEN = $repoToken
+$env:GITHUB_TOKEN = $repoToken
+$env:GIT_TERMINAL_PROMPT = "0"
+
+$askPassPath = Join-Path ([System.IO.Path]::GetTempPath()) "codex-growme-git-askpass.cmd"
+@"
+@echo off
+echo %* | findstr /I "Username" >NUL
+if not errorlevel 1 (
+  echo x-access-token
+) else (
+  echo %GH_TOKEN%
+)
+"@ | Set-Content -LiteralPath $askPassPath -Encoding ASCII
+$env:GIT_ASKPASS = $askPassPath
+
+Write-Host "GH_TOKEN_PRESENT=1"
+
+if (Test-Path -LiteralPath $maintenanceTokenPath) {
+  Write-Host "Maintenance token file detected but not loaded by default automation setup."
+}
+
+function Resolve-GitPath {
+  param([Parameter(Mandatory = $true)][string] $Path)
+
+  if ([System.IO.Path]::IsPathRooted($Path)) {
+    return $Path
+  }
+
+  return [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+}
+
+function Enable-GitMetadataWriteAccess {
+  $gitDirRaw = (& git rev-parse --git-dir).Trim()
+  $gitCommonDirRaw = (& git rev-parse --git-common-dir).Trim()
+  $paths = @(
+    (Resolve-GitPath $gitDirRaw),
+    (Resolve-GitPath $gitCommonDirRaw)
+  ) | Select-Object -Unique
+
+  foreach ($path in $paths) {
+    if (-not (Test-Path -LiteralPath $path)) {
+      throw "Git metadata path does not exist: $path"
+    }
+
+    attrib -R (Join-Path $path "*") /S /D 2>$null
+
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    & icacls $path /grant "${identity}:(OI)(CI)M" /T /C | Out-Null
+
+    $probe = Join-Path $path "codex-write-probe.tmp"
+    Set-Content -LiteralPath $probe -Value "ok" -Encoding ASCII
+    Remove-Item -LiteralPath $probe -Force
+  }
+
+  Write-Host "GIT_METADATA_WRITE_READY=1"
 }
 
 # Put Corepack's cache/config into a user-writable temp directory.
@@ -89,6 +162,28 @@ Invoke-Native `
   -Arguments @("--version")
 
 if (Test-Path -LiteralPath ".git") {
+  Enable-GitMetadataWriteAccess
+
+  $gitUserName = ((& git config --get user.name 2>$null) | Out-String).Trim()
+  if ([string]::IsNullOrWhiteSpace($gitUserName)) {
+    & git config user.name "Codex Automation"
+  }
+
+  $gitUserEmail = ((& git config --get user.email 2>$null) | Out-String).Trim()
+  if ([string]::IsNullOrWhiteSpace($gitUserEmail)) {
+    & git config user.email "codex-automation@users.noreply.github.com"
+  }
+
+  if (Test-Path -LiteralPath "tools\scripts\github-token-preflight.mjs") {
+    Invoke-Native `
+      -Description "Verify GitHub token with gh api" `
+      -FilePath "node" `
+      -Arguments @("tools/scripts/github-token-preflight.mjs")
+  }
+  else {
+    Write-Warning "GitHub token preflight script not found; skipping gh api probe."
+  }
+
   Invoke-Native `
     -Description "Fetch latest origin refs for unattended automation" `
     -FilePath "git" `

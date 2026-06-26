@@ -16,6 +16,8 @@ const role = args.role ?? process.env.AUTOMATION_ROLE ?? "implementation-worker"
 const githubWriteMode = args["github-write"] ?? defaultGitHubWriteMode(role);
 const allowDirty = Boolean(args["allow-dirty"]);
 const allowDetached = Boolean(args["allow-detached"]);
+const skipBranchProbe = Boolean(args["skip-branch-probe"]);
+const probeRemotePush = Boolean(args["probe-remote-push"]);
 
 runCheck("automation role is known", () => {
   if (!allowedRoles.has(role)) {
@@ -37,6 +39,11 @@ runCheck("GitHub write access is non-interactive when required", () => {
       "Missing non-interactive GitHub access. Set GITHUB_TOKEN, GH_TOKEN, or CODEX_GITHUB_CONNECTOR=enabled."
     );
   }
+
+  if (hasTokenGitHubAccess()) {
+    gh(["api", "user", "--jq", ".login"]);
+    gh(["api", "repos/Hangi-n42/Growme_2026", "--jq", ".full_name"]);
+  }
 });
 
 runCheck("worktree state is valid for automation role", () => {
@@ -49,7 +56,15 @@ runCheck("worktree state is valid for automation role", () => {
   }
 
   if (role === "branch-preparer") {
-    throw new Error("branch-preparer is obsolete for unattended Codex App jobs. Use workspace-verifier and do not create a local branch.");
+    if (!originMain) {
+      throw new Error("Missing origin/main. Repair the automation local environment setup fetch before branch preparation.");
+    }
+
+    if (!skipBranchProbe) {
+      runGitBranchWriteProbe({ probeRemotePush });
+    }
+
+    return;
   }
 
   if (role === "workspace-verifier") {
@@ -143,10 +158,13 @@ function defaultGitHubWriteMode(selectedRole) {
 
 function hasNonInteractiveGitHubAccess() {
   return Boolean(
-    process.env.GITHUB_TOKEN ||
-      process.env.GH_TOKEN ||
+    hasTokenGitHubAccess() ||
       /^enabled|true|1$/iu.test(process.env.CODEX_GITHUB_CONNECTOR ?? "")
   );
+}
+
+function hasTokenGitHubAccess() {
+  return Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN);
 }
 
 function git(args, options = {}) {
@@ -166,4 +184,60 @@ function git(args, options = {}) {
   }
 
   return output;
+}
+
+function gh(args) {
+  const result = spawnSync("gh", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      GIT_TERMINAL_PROMPT: "0"
+    }
+  });
+
+  if (result.status !== 0) {
+    throw new Error(`gh ${args.join(" ")} failed: ${result.stderr.trim() || "no stderr"}`);
+  }
+}
+
+function runGitBranchWriteProbe({ probeRemotePush: shouldProbeRemotePush }) {
+  const status = git(["status", "--porcelain"]).stdout;
+  if (status.length > 0) {
+    throw new Error("Worktree must be clean before branch-preparer can probe git metadata writes.");
+  }
+
+  const originalBranch = git(["branch", "--show-current"]).stdout;
+  const originalHead = git(["rev-parse", "--verify", "HEAD"]).stdout;
+  const probeBranch = `codex/__automation_preflight_probe_${process.pid}_${Date.now()}`;
+  let createdLocalBranch = false;
+  let pushedRemoteBranch = false;
+
+  try {
+    git(["switch", "-c", probeBranch, "origin/main"]);
+    createdLocalBranch = true;
+
+    git(["commit", "--allow-empty", "-m", "automation preflight git metadata probe"]);
+
+    if (shouldProbeRemotePush) {
+      git(["push", "origin", `${probeBranch}:${probeBranch}`]);
+      pushedRemoteBranch = true;
+      git(["push", "origin", "--delete", probeBranch]);
+      pushedRemoteBranch = false;
+    }
+  } finally {
+    if (originalBranch) {
+      git(["switch", originalBranch], { allowFailure: true });
+    } else {
+      git(["switch", "--detach", originalHead], { allowFailure: true });
+    }
+
+    if (pushedRemoteBranch) {
+      git(["push", "origin", "--delete", probeBranch], { allowFailure: true });
+    }
+
+    if (createdLocalBranch) {
+      git(["branch", "-D", probeBranch], { allowFailure: true });
+    }
+  }
 }

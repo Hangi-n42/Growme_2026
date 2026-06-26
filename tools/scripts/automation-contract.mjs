@@ -5,32 +5,42 @@ const contractPath = "docs/automation/unattended-pipeline.md";
 const requiredContractText = [
   "green-pr-merger",
   "issue-worker",
+  "branch-preparer",
   "workspace-verifier",
   "implementation-worker",
   "pr-updater",
   "GITHUB_TOKEN",
   "GH_TOKEN",
+  "growme_gh_token.txt",
+  "GH_TOKEN_PRESENT",
+  "gh api user",
+  "gh api repos/Hangi-n42/Growme_2026",
+  "github-token-preflight.mjs",
+  "--probe-remote-push",
   "CODEX_GITHUB_CONNECTOR=enabled",
   "Detached HEAD",
-  "Partial Write Policy",
+  "Pre-Implementation Write Policy",
+  "pre-implementation writes are forbidden",
   "Approval-Free Shell Contract",
   "shell `git fetch`, `git pull`, or `git push`",
   "Git metadata writes",
   "--allow-detached",
-  "`branch-preparer` is obsolete",
+  "temporary `codex/__automation_preflight_probe_*` branch",
   "Connector Publication",
   "BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE",
   "Gate Profiles",
   "node tools/scripts/automation-contract.mjs",
   "node tools/scripts/automation-preflight.mjs",
   "node tools/scripts/automation-gate-plan.mjs",
+  "node tools/scripts/github-token-preflight.mjs",
   "bare `corepack pnpm ...`"
 ];
 
 const requiredScripts = [
   "check:automation-contract",
   "check:automation-preflight",
-  "check:automation-gate-plan"
+  "check:automation-gate-plan",
+  "check:github-token"
 ];
 
 runCheck("unattended automation contract documents fail-fast rules", () => {
@@ -61,7 +71,10 @@ runCheck("automation contract is wired into quality policy", () => {
   for (const requiredText of [
     "automation_pipeline_gates:",
     "green_pr_merger_scope: merge_only",
+    "github_token_preflight: gh_api_required",
+    "branch_preparer_git_write_probe: required",
     "workspace_verifier_scope: local_ref_verification_only",
+    "pre_implementation_github_writes: forbidden",
     "partial_write_policy: rollback_or_blocked",
     "detached_head_connector_implementation: allowed_with_preflight",
     "git_metadata_writes: forbidden_in_unattended_job_body"

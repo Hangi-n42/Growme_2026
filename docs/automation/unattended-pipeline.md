@@ -11,7 +11,8 @@ Automations are single-purpose jobs. A job must not silently expand into another
 | Role | Allowed work | Must not do |
 | --- | --- | --- |
 | `green-pr-merger` | List open PRs, inspect required check conclusions, merge PRs that already satisfy the release policy, and exit no-op when there are no open PRs. | MUST NOT select issues, add `codex-working`, create branches, edit files, run implementation gates, or create follow-up work unless the merge itself exposes a blocking P0/P1. |
-| `issue-worker` | Select one ready issue, verify its requirements/non-goals/acceptance criteria/tests/quality gates/suggested agent, add `codex-working`, and write a Korean start comment. | MUST NOT edit files or create commits. |
+| `issue-worker` | Select one ready issue using read-only issue and PR evidence, verify its requirements/non-goals/acceptance criteria/tests/quality gates/suggested agent, and record the planned remote branch name. | MUST NOT write labels or comments before implementation, edit files, create branches, or create commits. |
+| `branch-preparer` | Maintenance preflight that proves this worktree can create a local `codex/` branch, create a commit, and optionally push/delete a temporary remote branch. | MUST NOT select issues, edit product files, leave probe branches behind, or run without a clean worktree. |
 | `workspace-verifier` | Use the setup-fetched `origin/main`, verify the workspace is suitable for editing, and record the planned remote `codex/<issue-slug>` branch name. | MUST NOT create, switch, checkout, or update a local branch; MUST NOT run shell network Git; MUST NOT run Git metadata writes; and MUST NOT modify issue labels after workspace setup fails. |
 | `implementation-worker` | Edit files only after issue selection, workspace setup, and freshness preflight pass. It may run from detached HEAD or a setup-fetched `main` workspace only in connector-publish mode. | MUST NOT label issues, create local branches, commit, merge PRs, or run Git metadata writes. |
 | `pr-updater` | Re-run freshness checks, summarize gates, publish the local diff through the GitHub connector, and open/update a PR. | MUST NOT run shell `git push`, `git add`, `git commit`, pick a new issue, or widen implementation scope. |
@@ -25,11 +26,26 @@ Unattended jobs must use one non-interactive GitHub access mode from the start:
 
 - GitHub Actions: `GITHUB_TOKEN`.
 - Local automation runner: `GH_TOKEN` or `GITHUB_TOKEN`.
+- Codex App local automation setup: read `C:\Users\dsl\.codex\secrets\growme_gh_token.txt`
+  into both `GH_TOKEN` and `GITHUB_TOKEN`.
 - Codex App connector flow: connector-first writes, with `CODEX_GITHUB_CONNECTOR=enabled` recorded
   for local preflight evidence when a shell script needs to validate the run.
 
 Do not run `gh auth login` or `gh auth status` inside unattended job bodies. Those are human setup
 commands. A missing token or connector is a preflight failure, not a retry loop.
+The maintenance token file must not be loaded by default automation setup.
+
+Token-based preflight must use `gh api`, not interactive auth commands:
+
+```bash
+node tools/scripts/github-token-preflight.mjs
+```
+
+It must prove:
+
+- `GH_TOKEN_PRESENT`;
+- `gh api user`;
+- `gh api repos/Hangi-n42/Growme_2026`.
 
 ## Preflight
 
@@ -40,6 +56,7 @@ not touch Corepack package-manager caches during startup:
 ```bash
 node tools/scripts/automation-preflight.mjs --role=green-pr-merger
 node tools/scripts/automation-preflight.mjs --role=issue-worker
+node tools/scripts/automation-preflight.mjs --role=branch-preparer
 node tools/scripts/automation-preflight.mjs --role=workspace-verifier
 node tools/scripts/automation-preflight.mjs --role=implementation-worker
 node tools/scripts/automation-preflight.mjs --role=implementation-worker --allow-detached
@@ -53,8 +70,11 @@ It must not fetch, create a local branch, or switch branches; if `origin/main` o
 branch ref is missing or stale, stop with `BLOCKED_STALE_LOCAL_MAIN` and report that setup fetch
 must be repaired.
 
-`branch-preparer` is obsolete for unattended Codex App jobs. If a stale prompt attempts to run that
-role, preflight must fail before any local branch command can run.
+`branch-preparer` preflight must prove Git metadata writes before implementation starts. It creates
+a temporary `codex/__automation_preflight_probe_*` branch from `origin/main`, creates an empty probe
+commit, switches back to the original branch or detached HEAD, and deletes the temporary branch. Use
+`--probe-remote-push` only for explicit maintenance verification; it pushes and deletes the
+temporary remote branch.
 
 The `pnpm check:*` package scripts remain available for humans and CI. Do not invoke bare
 `corepack pnpm ...` from Stage 0 or role preflight inside an unattended job body unless the command
@@ -76,24 +96,26 @@ and for connector-publish implementation or PR update roles that pass `--allow-d
 the default safe path for Codex App worktree sandboxes where Git metadata writes require runtime
 approval.
 
-## Partial Write Policy
+## Pre-Implementation Write Policy
 
-Multi-step GitHub writes are transactional at the workflow level:
+Issue selection and workspace verification must be read-only. Do not use `codex-working` labels,
+start comments, blocked comments, branch creation, or any other GitHub write as a precondition for
+implementation. GitHub connector writes can still require runtime permission review in Codex App
+automations, so pre-implementation writes are forbidden rather than best-effort.
 
-1. Add `codex-working`.
-2. Add the Korean start comment.
+Read-only setup sequence:
+
+1. Select one eligible issue.
+2. Re-check open Codex PRs and issue labels immediately before editing.
 3. Verify local refs and planned remote branch name from setup-fetched `origin/main`.
 4. Run implementation preflight, using `--allow-detached` when the Codex App worktree is detached.
 
-If any step fails:
+If read-only setup fails, do not edit files and exit blocked with the failed step name and recovery
+action. Do not attempt to write a blocked issue comment from the failing path.
 
-- do not edit files;
-- remove labels/comments that this job created when the connector or token can do so safely;
-- otherwise write one Korean blocked comment if possible;
-- exit blocked with the failed step name and the exact recovery action.
-
-Partial state is worse than no work. An issue with `codex-working` and no valid branch must be
-treated as blocked, not as implementation-ready.
+`codex-working` is advisory only. It may be maintained by manual triage or a separate write-capable
+workflow, but this implementation worker must not depend on creating, removing, or observing its own
+`codex-working` write.
 
 ## Approval-Free Shell Contract
 
@@ -107,13 +129,16 @@ Allowed inside unattended job bodies:
 - repo-local guard scripts invoked directly through `node tools/scripts/*.mjs`;
 - package scripts only after their package-manager cache access has already been proven
   approval-free for the same job body;
-- connector-backed GitHub reads/writes;
+- connector-backed GitHub reads;
+- connector-backed GitHub writes only during PR publication or merge roles where the write is the
+  role's primary purpose;
 - git commands that operate inside a prepared branch without requesting approval.
 
 Blocked inside unattended job bodies:
 
 - `gh auth login`;
 - `gh auth status`;
+- pre-implementation GitHub writes such as issue labels, start comments, and blocked comments;
 - shell `git fetch`, `git pull`, or `git push`;
 - Git metadata writes such as `git switch`, `git checkout`, `git branch`, `git add`, `git commit`, or `git reset`;
 - bare `corepack pnpm ...` startup guards that may touch the default Corepack cache;
@@ -132,6 +157,8 @@ implementation and gates pass, publish the working-tree diff through the GitHub 
 3. For every changed UTF-8 text file, use `fetch_file` to get the current blob SHA, then
    `create_file`, `update_file`, or `delete_file` on the remote branch.
 4. Open or update the PR with `create_pull_request` or `update_pull_request`.
+5. After a PR exists, best-effort issue comments or labels may be attempted only if they are not
+   required for success. If they require approval or fail, report the skipped write and keep the PR.
 
 If connector-backed publication is unavailable, or if the local diff contains binary changes that
 the connector cannot publish safely, stop with `BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE`. Do not run
@@ -161,7 +188,8 @@ An unattended automation must stop before implementation when it sees any of the
 - detached HEAD for implementation or PR update work without `--allow-detached`;
 - stale branch that does not include fetched `origin/main`;
 - missing setup-fetched `origin/main`;
-- failed label/comment/workspace setup;
+- attempted pre-implementation GitHub write;
+- failed read-only workspace setup;
 - connector-backed publication unavailable for changed files;
 - approval-required command in the planned job body;
 - unknown changed surface that cannot be mapped to a narrow gate profile.

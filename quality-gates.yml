@@ -25,6 +25,9 @@ automation_pipeline_gates:
   workspace_verifier_scope: local_ref_verification_only
   implementation_scope: scoped_code_changes_only
   github_auth_mode: non_interactive_required
+  github_token_preflight: gh_api_required
+  branch_preparer_git_write_probe: required
+  pre_implementation_github_writes: forbidden
   detached_head_connector_implementation: allowed_with_preflight
   git_metadata_writes: forbidden_in_unattended_job_body
   partial_write_policy: rollback_or_blocked
