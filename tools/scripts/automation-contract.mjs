@@ -49,7 +49,9 @@ const requiredScripts = [
   "check:github-token",
   "check:external-runner-preflight",
   "automation:green-pr-merger",
-  "automation:green-pr-merger:dry-run"
+  "automation:green-pr-merger:dry-run",
+  "automation:dependency-triage",
+  "automation:dependency-triage:dry-run"
 ];
 
 runCheck("unattended automation contract documents fail-fast rules", () => {

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { readText, repoRoot, runCheck } from "./lib/repo.mjs";
 
 const vitestPath = join(repoRoot, "node_modules", "vitest", "vitest.mjs");
+const { createDependencyTriagePlan, parseDependencyReferences } = await import("../automation/dependency-triage.mjs");
 const { evaluateReviewFindingsFromBodies } = await import("../automation/green-pr-merger.mjs");
 
 if (existsSync(vitestPath)) {
@@ -71,6 +72,48 @@ if (existsSync(vitestPath)) {
     }
   });
 
+  runCheck("dependency triage parses and unlocks closed dependencies", () => {
+    const parsed = parseDependencyReferences("Dependencies:\n- #6\n- #9");
+    const plan = createDependencyTriagePlan({
+      issues: [
+        noInstallIssue({ number: 6, title: "VS-004 Content foundation", state: "closed" }),
+        noInstallIssue({ number: 9, title: "VS-007 Save/load", state: "closed" }),
+        noInstallIssue({
+          number: 29,
+          title: "VS-027 Resource node and drop table system",
+          body: "Dependencies:\n- #6\n- #9",
+          labels: ["codex-blocked"]
+        })
+      ],
+      openPrs: [],
+      now: new Date("2026-06-29T00:00:00.000Z")
+    });
+
+    if (parsed.issueNumbers.join(",") !== "6,9" || plan.newlyCodexReadyPlanned[0]?.number !== 29) {
+      throw new Error("Dependency triage must unlock blocked issues whose dependencies are closed.");
+    }
+  });
+
+  runCheck("dependency triage keeps open dependencies blocked", () => {
+    const plan = createDependencyTriagePlan({
+      issues: [
+        noInstallIssue({ number: 10, title: "VS-010 Open dependency" }),
+        noInstallIssue({
+          number: 40,
+          title: "VS-040 Waiting issue",
+          body: "Blocked by #10",
+          labels: ["codex-blocked"]
+        })
+      ],
+      openPrs: [],
+      now: new Date("2026-06-29T00:00:00.000Z")
+    });
+
+    if (plan.newlyCodexReadyPlanned.length > 0 || plan.stillBlockedIssues[0]?.reason !== "open dependencies remain") {
+      throw new Error("Dependency triage must not unlock issues with open dependencies.");
+    }
+  });
+
   runCheck("unit scaffold has deterministic sim smoke test", () => {
     const testText = readText("packages/sim-core/tests/smoke.test.ts");
     for (const expected of [
@@ -83,4 +126,16 @@ if (existsSync(vitestPath)) {
       }
     }
   });
+}
+
+function noInstallIssue({ number, title, state = "open", labels = [], body = "", updatedAt = "2026-06-28T00:00:00.000Z" }) {
+  return {
+    number,
+    title,
+    state,
+    body,
+    updated_at: updatedAt,
+    html_url: `https://example.test/issues/${number}`,
+    labels: labels.map((name) => ({ name }))
+  };
 }

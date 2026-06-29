@@ -1,0 +1,46 @@
+name: dependency-triage
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Inspect dependency labels without mutating GitHub issues"
+        required: true
+        type: boolean
+        default: true
+  # Schedule is intentionally disabled until dry-run history is reviewed.
+  # schedule:
+  #   - cron: "23 3 * * *"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  dependency-triage:
+    name: Dependency Triage
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GROWME_AUTOMATION_TOKEN || github.token }}
+      GITHUB_TOKEN: ${{ secrets.GROWME_AUTOMATION_TOKEN || github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: External runner preflight
+        run: node tools/scripts/external-runner-preflight.mjs
+
+      - name: Run dependency triage
+        shell: bash
+        run: |
+          if [ "${{ inputs.dry_run }}" = "false" ]; then
+            node tools/automation/dependency-triage.mjs --apply
+          else
+            node tools/automation/dependency-triage.mjs --dry-run
+          fi
