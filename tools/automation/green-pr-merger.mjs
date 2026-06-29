@@ -1,11 +1,14 @@
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 const args = parseArgs(process.argv.slice(2));
 const repository = args.repo ?? process.env.GROWME_REPOSITORY ?? "Hangi-n42/Growme_2026";
 const dryRun = args["dry-run"] || !args.merge;
 const maxPrs = Number(args.limit ?? 100);
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
 
 function main() {
   preflight();
@@ -166,14 +169,18 @@ function evaluateChecks(pr) {
 }
 
 function evaluateReviewFindings(pr) {
+  return evaluateReviewFindingsFromBodies(collectReviewBodies(pr.number));
+}
+
+export function evaluateReviewFindingsFromBodies(reviewBodies) {
   const reasons = [];
   const p2Findings = [];
-  const reviewBodies = collectReviewBodies(pr.number);
 
   for (const item of reviewBodies) {
     const body = item.body ?? "";
+    const isInactiveThread = item.reviewThread?.isResolved === true || item.reviewThread?.isOutdated === true;
 
-    if (hasSeverity(body, 0) || hasSeverity(body, 1)) {
+    if (!isInactiveThread && (hasSeverity(body, 0) || hasSeverity(body, 1))) {
       reasons.push(`unresolved P0/P1 marker found in ${item.source}`);
     }
 
@@ -191,13 +198,64 @@ function evaluateReviewFindings(pr) {
 function collectReviewBodies(prNumber) {
   const reviews = ghJson(["api", `repos/${repository}/pulls/${prNumber}/reviews?per_page=100`]);
   const issueComments = ghJson(["api", `repos/${repository}/issues/${prNumber}/comments?per_page=100`]);
-  const reviewComments = ghJson(["api", `repos/${repository}/pulls/${prNumber}/comments?per_page=100`]);
+  const reviewThreadComments = collectReviewThreadBodies(prNumber);
 
   return [
     ...reviews.map((review) => ({ source: `review ${review.id}`, body: review.body })),
     ...issueComments.map((comment) => ({ source: `issue comment ${comment.id}`, body: comment.body })),
-    ...reviewComments.map((comment) => ({ source: `review comment ${comment.id}`, body: comment.body }))
+    ...reviewThreadComments
   ].filter((item) => item.body);
+}
+
+function collectReviewThreadBodies(prNumber) {
+  const { owner, name } = parseRepositoryName(repository);
+  const query = `
+    query($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) {
+        pullRequest(number: $number) {
+          reviewThreads(first: 100) {
+            nodes {
+              id
+              isResolved
+              isOutdated
+              comments(first: 100) {
+                nodes {
+                  databaseId
+                  body
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const response = ghJson([
+    "api",
+    "graphql",
+    "-f",
+    `query=${query}`,
+    "-F",
+    `owner=${owner}`,
+    "-F",
+    `repo=${name}`,
+    "-F",
+    `number=${prNumber}`
+  ]);
+  const threads = response.data?.repository?.pullRequest?.reviewThreads?.nodes ?? [];
+
+  return threads.flatMap((thread) =>
+    (thread.comments?.nodes ?? []).map((comment) => ({
+      source: `review comment ${comment.databaseId}`,
+      body: comment.body,
+      reviewThread: {
+        id: thread.id,
+        isResolved: thread.isResolved,
+        isOutdated: thread.isOutdated
+      }
+    }))
+  );
 }
 
 function ensureP2Followup(pr, p2Findings) {
@@ -258,6 +316,15 @@ function mergePr(pr) {
 
 function hasLabel(pr, labelName) {
   return (pr.labels ?? []).some((label) => label.name === labelName);
+}
+
+function parseRepositoryName(value) {
+  const [owner, name] = value.split("/", 2);
+  if (!owner || !name) {
+    throw new Error(`Invalid repository name: ${value}. Expected owner/repo.`);
+  }
+
+  return { owner, name };
 }
 
 function hasSeverity(body, severity) {
