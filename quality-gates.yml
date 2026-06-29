@@ -21,11 +21,15 @@ scaffold_gates:
 
 automation_pipeline_gates:
   green_pr_merger_scope: merge_only
+  github_remote_operations_runner: external_token_backed_required
+  codex_app_remote_network_operations: blocked_or_manual_fallback
+  codex_app_implementation_automation: manual_or_semi_automatic_until_network_verified
   issue_selection_scope: issue_metadata_only
   workspace_verifier_scope: local_ref_verification_only
   implementation_scope: scoped_code_changes_only
   github_auth_mode: non_interactive_required
   github_token_preflight: gh_api_required
+  external_runner_preflight: required
   branch_preparer_git_write_probe: required
   token_backed_git_publication: required
   named_codex_branch_for_mutable_work: required
@@ -33,6 +37,9 @@ automation_pipeline_gates:
   pre_implementation_github_writes: allowed_after_branch_setup
   partial_write_policy: report_metadata_failures_without_blocking
   approval_required_commands: forbidden_in_unattended_job_body
+  blocked_network_egress_outcome: required
+  connector_publication_default: forbidden
+  connector_remote_fallback: explicit_manual_only
   gate_profile_policy: touched_surface_then_full_release
 
 release_candidate_gates:

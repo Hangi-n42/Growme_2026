@@ -17,9 +17,10 @@ This repository is operated by Codex App agents working in Git worktrees, GitHub
 
 ## Autonomous Workflow
 
-For supervised/local agent work and unattended automation jobs, use token-backed Git and `gh`
-after the unattended preflight has proven GitHub token access, Git metadata writes, and remote push
-capability.
+For supervised/local agent work, use token-backed Git and `gh` after preflight has proven GitHub
+token access, Git metadata writes, and remote push capability. Fully unattended GitHub operation
+automation runs in external token-backed runners, not inside the Codex App job body, unless
+approval-free network egress has been proven for that job.
 
 1. Create or select a GitHub Issue before implementation. Every issue must include requirements, non-goals, acceptance criteria, tests, quality gates, and suggested agent.
 2. Fetch remote main immediately before starting work: `git fetch origin main`.
@@ -37,12 +38,14 @@ capability.
 - Unattended jobs must follow `docs/automation/unattended-pipeline.md`.
 - `green-pr-merger` may only inspect and merge existing green PRs. If there are no open PRs, it must exit no-op and must not select issues or implement work.
 - Issue selection, workspace verification, implementation, and PR updates are separate roles. A job must not silently fall through from one role into another.
-- GitHub writes in unattended jobs must use `GH_TOKEN`/`GITHUB_TOKEN` through `gh`, `gh api`, and token-backed Git. Do not run `gh auth login` or `gh auth status` inside an unattended job body.
+- GitHub remote operation automations (`green-pr-merger`, `dependency-triage`, `review-feedback-follow-up`, and `release-candidate-evaluator`) default to external token-backed runners such as GitHub Actions. They must not depend on Codex App job-body socket access.
+- Codex App automations that need code edits (`autonomous-backlog-worker` and `failed-pr-fixer`) are manual or semi-automatic until approval-free network egress is proven. They must stop with `BLOCKED_NETWORK_EGRESS` when `GH_TOKEN`/`GITHUB_TOKEN` is present but `gh api` or token-backed Git cannot reach GitHub.
+- GitHub writes must use `GH_TOKEN`/`GITHUB_TOKEN` through `gh`, `gh api`, and token-backed Git in an approval-free runner. Do not run `gh auth login` or `gh auth status` inside unattended automation.
 - Codex App automation setup must load `C:\Users\dsl\.codex\secrets\growme_gh_token.txt` into `GH_TOKEN` and `GITHUB_TOKEN`; it must not load the maintenance token by default.
 - Token-based GitHub preflight must use `gh api user` and `gh api repos/Hangi-n42/Growme_2026`, not `gh auth login` or `gh auth status`.
-- Branch preparation must pass `node tools/scripts/automation-preflight.mjs --role=branch-preparer --probe-remote-push` before implementation. This proves local branch creation, empty commit, remote push, and remote branch deletion without leaving probe branches behind.
+- External runner preflight must pass `node tools/scripts/external-runner-preflight.mjs` before GitHub remote operations.
+- Branch preparation must pass `node tools/scripts/automation-preflight.mjs --role=branch-preparer` before implementation. Remote push probing is external-runner or explicit maintenance work, not a Codex App job-body default.
 - Unattended implementation work must run on a named `codex/` branch created from freshly fetched `origin/main`. `implementation-worker` and `pr-updater` must not continue from detached HEAD.
-- Unattended job bodies may run `git fetch origin main`, `git switch -c codex/<issue-slug> origin/main`, `git add`, `git commit`, `git push`, `gh pr create`, `gh pr edit`, and `gh pr comment` after token and branch-preparer preflight succeeds.
 - Pre-implementation issue label/comment writes are not a required gate. `codex-working` labels and progress comments may be attempted only after branch setup succeeds, and failures must be reported without blocking implementation.
 - If setup or branch preparation fails, stop before editing files and report a precise `BLOCKED_*` result.
 - Use `node tools/scripts/automation-gate-plan.mjs` to select touched-surface gates, then run the full release gate set before PR readiness when required.

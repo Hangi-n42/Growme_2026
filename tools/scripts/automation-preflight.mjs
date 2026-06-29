@@ -150,9 +150,7 @@ function parseArgs(argv) {
 }
 
 function defaultGitHubWriteMode(selectedRole) {
-  return ["green-pr-merger", "issue-worker", "branch-preparer", "implementation-worker", "pr-updater"].includes(selectedRole)
-    ? "required"
-    : "skip";
+  return "skip";
 }
 
 function hasNonInteractiveGitHubAccess() {
@@ -193,8 +191,23 @@ function gh(args) {
   });
 
   if (result.status !== 0) {
-    throw new Error(`gh ${args.join(" ")} failed: ${result.stderr.trim() || "no stderr"}`);
+    const stderr = result.stderr.trim();
+    throw new Error(`${classifyGhFailure(stderr)}: gh ${args.join(" ")} failed: ${stderr || "no stderr"}`);
   }
+}
+
+function classifyGhFailure(stderr) {
+  const message = stderr.toLowerCase();
+
+  if (
+    /could not resolve host|failed to connect|connection|network|socket|timed? ?out|timeout|econn|eai_again|proxy|tls|connectex|permission denied|access is denied|operation not permitted|eperm|sandbox/u.test(
+      message
+    )
+  ) {
+    return "BLOCKED_NETWORK_EGRESS";
+  }
+
+  return "BLOCKED_GITHUB_ACCESS";
 }
 
 function runGitBranchWriteProbe({ probeRemotePush: shouldProbeRemotePush }) {

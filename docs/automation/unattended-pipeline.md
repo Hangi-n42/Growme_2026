@@ -1,8 +1,36 @@
 # Unattended Codex Automation Pipeline
 
-This contract defines the default unattended path for Codex App automations in this repository.
-The default path is token-backed Git plus `gh`/`gh api`. Jobs that cannot satisfy the preflight
-must stop before implementation and report a precise blocked result.
+This contract defines where unattended automation may run and what must happen when no human is
+present to approve shell escalation, finish interactive auth, or repair partial GitHub state.
+
+Codex App unattended job bodies may block shell network/socket operations such as `gh api`,
+`gh pr list`, `gh pr merge`, `git fetch`, and `git push`. `GH_TOKEN` and `GITHUB_TOKEN` solve
+authentication; they do not bypass the Codex App sandbox. GitHub remote operation automations
+therefore default to external token-backed runners.
+
+## Runner Ownership
+
+| Automation | Default runner | Status in Codex App |
+| --- | --- | --- |
+| `green-pr-merger` | External token-backed runner, preferably GitHub Actions. | PAUSED/manual fallback only. |
+| `dependency-triage` | External token-backed runner. | PAUSED/manual fallback only. |
+| `review-feedback-follow-up` | External token-backed runner. | PAUSED/manual fallback only. |
+| `release-candidate-evaluator` | External token-backed runner. | PAUSED/manual fallback only. |
+| `autonomous-backlog-worker` | Codex App or Codex execution environment because code edits are required. | PAUSED or semi-automatic until approval-free network egress is proven. |
+| `failed-pr-fixer` | Codex App or Codex execution environment because code edits are required. | PAUSED or semi-automatic until approval-free network egress is proven. |
+
+External runners own GitHub remote mutations:
+
+- `gh api`;
+- `gh pr list`;
+- `gh pr merge`;
+- issue label/comment writes;
+- PR comment/review inspection;
+- release candidate evaluation comments;
+- token-backed `git fetch` and `git push` when the automation needs remote Git state.
+
+Codex App job bodies must not silently take over merge, triage, review-follow-up, or release
+evaluation when those external runners are unavailable.
 
 ## Role Boundaries
 
@@ -10,30 +38,42 @@ Automations are single-purpose jobs. A job must not silently expand into another
 
 | Role | Allowed work | Must not do |
 | --- | --- | --- |
-| `green-pr-merger` | List open PRs, inspect checks/reviews, and squash merge exactly one eligible green PR. | MUST NOT select issues, create branches, edit files, run implementation gates, or implement work. |
-| `issue-worker` | Select one ready issue using issue and PR evidence, verify dependencies, and record the planned `codex/` branch name. | MUST NOT edit files, create commits, merge PRs, or require issue labels/comments before branch setup. |
-| `branch-preparer` | Prove this worktree can create a local `codex/` branch, create a commit, and optionally push/delete a temporary remote branch. | MUST NOT select issues, edit product files, leave probe branches behind, or run with a dirty worktree. |
+| `green-pr-merger` | Inspect existing PRs and squash merge exactly one eligible green PR in an external runner. | MUST NOT select issues, create branches, edit files, run implementation gates, or implement work. |
+| `dependency-triage` | Update GitHub issue labels after completed dependency PRs in an external runner. | MUST NOT edit code, create branches, open PRs, or implement backlog items. |
+| `review-feedback-follow-up` | Convert non-blocking P2 review feedback into follow-up issues in an external runner. | MUST NOT edit code, create branches, open PRs, or handle P0/P1 blockers. |
+| `release-candidate-evaluator` | Evaluate only PRs labeled `release-candidate` in an external runner. | MUST NOT merge, implement unrelated work, or weaken release gates. |
+| `issue-worker` | Select one ready issue and record the planned `codex/` branch name. | MUST NOT edit files, create commits, merge PRs, or require issue labels/comments before branch setup. |
+| `branch-preparer` | Prove local Git metadata writes and branch creation are possible. | MUST NOT select issues, edit product files, leave probe branches behind, or require remote network by default. |
 | `workspace-verifier` | Verify fetched `origin/main`, clean worktree, and local freshness before mutable work. | MUST NOT select issues, edit product files, or publish PRs. |
 | `implementation-worker` | Edit files only on a named `codex/` branch after branch preparation and freshness checks pass. | MUST NOT continue from detached HEAD, merge PRs, or widen issue scope. |
-| `pr-updater` | Re-run freshness checks, commit, push, open/update the PR, and add PR/issue comments with `gh`. | MUST NOT pick a new issue, widen implementation scope, or merge PRs. |
+| `pr-updater` | Re-run freshness checks, summarize gates, and publish an existing implementation branch only when network egress is approval-free. | MUST NOT pick a new issue, widen implementation scope, or merge PRs. |
 
-If `green-pr-merger` finds zero eligible PRs, the correct result is no-op. It must not fall
-through to issue selection or implementation.
+If `green-pr-merger` finds zero eligible PRs, the correct result is no-op. It must not fall through
+to issue selection or implementation.
 
 ## GitHub Access
 
-Unattended jobs must use token-backed GitHub access from the start:
+Automation must use non-interactive token-backed GitHub access:
 
-- Codex App setup reads `C:\Users\dsl\.codex\secrets\growme_gh_token.txt` into both `GH_TOKEN`
-  and `GITHUB_TOKEN`.
-- The maintenance token file must not be loaded by default automation setup.
-- `GIT_ASKPASS` must be configured by setup so `git push` can authenticate without prompts.
-- Do not run `gh auth login` or `gh auth status` inside unattended job bodies.
+- GitHub Actions: prefer repository secret `GROWME_AUTOMATION_TOKEN`; otherwise use the workflow
+  `GITHUB_TOKEN` when its permissions are sufficient.
+- Local external runner: `GH_TOKEN` or `GITHUB_TOKEN`.
+- Codex App local setup: may read `C:\Users\dsl\.codex\secrets\growme_gh_token.txt` into both
+  `GH_TOKEN` and `GITHUB_TOKEN`, but this does not prove network egress.
+
+The maintenance token file must not be loaded by default automation setup. Token values must never
+be printed, committed, or copied into prompts.
+
+Do not run these commands in unattended automation:
+
+- `gh auth login`;
+- `gh auth status`.
 
 Token preflight must use API calls, not interactive auth commands:
 
 ```bash
 node tools/scripts/github-token-preflight.mjs
+node tools/scripts/external-runner-preflight.mjs
 ```
 
 It must prove:
@@ -42,62 +82,92 @@ It must prove:
 - `gh api user`;
 - `gh api repos/Hangi-n42/Growme_2026`.
 
-Missing token access is `BLOCKED_GITHUB_ACCESS`, not a retry loop.
+## Fail-Fast Outcomes
 
-## Default Implementation Path
+- `BLOCKED_GITHUB_ACCESS`: no `GH_TOKEN` or `GITHUB_TOKEN`, or the token cannot authenticate.
+- `BLOCKED_NETWORK_EGRESS`: a token is present, but network/socket access prevents reaching GitHub.
+- `BLOCKED_APPROVAL_REQUIRED`: a command would require runtime approval or escalation.
+- `BLOCKED_DETACHED_HEAD`: mutable implementation or PR update work is not on a named `codex/` branch.
+- `BLOCKED_BRANCH_SETUP`: local Git metadata writes or branch creation failed.
+- `NO_ACTION_NO_OPEN_PRS`: merger found no open implementation PRs.
+- `NO_ACTION_NO_ELIGIBLE_GREEN_PR`: merger found open PRs but none satisfied merge policy.
 
-The default unattended implementation path is:
+`BLOCKED_NETWORK_EGRESS` is distinct from `BLOCKED_APPROVAL_REQUIRED`. The former means token
+authentication is present but the runner cannot open a GitHub API or Git network connection. The
+latter means the command requires an approval prompt and must not be retried by an unattended job.
 
-1. Setup loads `GH_TOKEN` and `GITHUB_TOKEN`.
-2. Setup/preflight verifies `gh api user` and `gh api repos/Hangi-n42/Growme_2026`.
-3. Setup/preflight verifies Git metadata writes and remote push/delete probe.
-4. Job body runs `git fetch origin main`.
-5. Job body runs `git switch -c codex/<issue-slug> origin/main`.
-6. Implement exactly one selected issue.
-7. Run local gates.
-8. Run `git add`.
-9. Run `git commit`.
-10. Run `git push`.
-11. Run `gh pr create`, `gh pr edit`, or `gh pr comment`.
-12. `green-pr-merger` later uses `gh pr merge`.
+## External Runner Path
+
+GitHub remote operation automations use this default path:
+
+1. Runner injects `GH_TOKEN` or `GITHUB_TOKEN`.
+2. Run `node tools/scripts/external-runner-preflight.mjs`.
+3. Run the specific automation script, for example:
+
+   ```bash
+   node tools/automation/green-pr-merger.mjs --dry-run
+   ```
+
+4. After dry-run is reviewed, run without dry-run or with `--merge` from the external runner.
+
+The first implementation target is GitHub Actions for `green-pr-merger`. Windows Task Scheduler is
+an acceptable fallback for local external execution if GitHub Actions cannot hold the required
+token or permissions.
+
+## Codex App Path
+
+Codex App remains useful for code-writing tasks, but it is not the default host for fully unattended
+GitHub operation automation.
+
+Inside a Codex App job body:
+
+- do not retry approval-gated commands;
+- do not assume `GH_TOKEN` implies socket access;
+- stop with `BLOCKED_NETWORK_EGRESS` if `gh api`, `git fetch`, or `git push` cannot reach GitHub;
+- keep `autonomous-backlog-worker` and `failed-pr-fixer` PAUSED or semi-automatic until
+  approval-free network egress has been proven for the job body;
+- do not use connector publication as the default PR publication path.
+
+If a Codex App sandbox still needs remote GitHub work, a connector may be used only as an explicit
+fallback or manually approved alternate path. It is not the default publication or merge path.
 
 ## Preflight
 
-Every unattended job must run the narrowest preflight for its role before mutable work:
+Use the narrowest preflight for the runner and role.
+
+For the repository contract check:
 
 ```bash
-node tools/scripts/automation-preflight.mjs --role=green-pr-merger
+node tools/scripts/automation-contract.mjs
+```
+
+External GitHub operation runner:
+
+```bash
+node tools/scripts/external-runner-preflight.mjs
+```
+
+Codex App local role guards:
+
+```bash
 node tools/scripts/automation-preflight.mjs --role=issue-worker
-node tools/scripts/automation-preflight.mjs --role=branch-preparer --probe-remote-push
+node tools/scripts/automation-preflight.mjs --role=branch-preparer
 node tools/scripts/automation-preflight.mjs --role=workspace-verifier
 node tools/scripts/automation-preflight.mjs --role=implementation-worker
 node tools/scripts/automation-preflight.mjs --role=pr-updater --allow-dirty
 ```
 
-`issue-worker` must verify token-backed GitHub access with `gh api`.
+`automation-preflight.mjs` must not force remote GitHub API calls by default inside a Codex App job
+body. Use `--github-write=required` only in a runner where network egress has already been approved.
 
-`branch-preparer` must prove Git metadata writes before implementation starts. It creates a
-temporary `codex/__automation_preflight_probe_*` branch from `origin/main`, creates an empty probe
-commit, switches back to the original branch or detached HEAD, deletes the local probe branch, and,
-when `--probe-remote-push` is used, pushes and deletes the temporary remote branch. It must leave no
-local or remote probe branch behind.
+`branch-preparer` creates a temporary `codex/__automation_preflight_probe_*` branch from
+`origin/main`, creates an empty probe commit, switches back to the original branch or detached HEAD,
+and deletes the local temporary branch. `--probe-remote-push` is explicit maintenance verification;
+it pushes and deletes a temporary remote branch and must not be a Codex App default.
 
-`implementation-worker` and `pr-updater` require a named local branch with prefix `codex/`.
-They must not continue from detached HEAD. `--allow-detached` is reserved for read-only inspection
-or explicit human-directed fallback and is not part of the default mutable path.
-
-All mutable preflight paths require:
-
-- clean worktree unless `--allow-dirty` is passed for post-edit PR update checks;
-- fetched `origin/main`;
-- `origin/main` as an ancestor of `HEAD` before editing or publishing;
-- token-backed GitHub access when the role reads/writes GitHub state.
-
-For the contract check, use:
-
-```bash
-node tools/scripts/automation-contract.mjs
-```
+`implementation-worker` and `pr-updater` require a named local branch with prefix `codex/`. They
+must not continue from detached HEAD. `--allow-detached` is reserved for read-only inspection or
+explicit human-directed fallback and is not part of the default mutable path.
 
 For gate planning, use:
 
@@ -111,40 +181,11 @@ node tools/scripts/automation-gate-plan.mjs --full
 Pre-implementation issue label/comment writes are not required gates.
 
 `codex-working` labels and progress comments are advisory only. They may be attempted after branch
-setup succeeds, but a label/comment failure must not block implementation when token-backed branch
-setup has already passed. Report skipped or failed metadata writes in the final response.
+setup succeeds, but a label/comment failure must not block implementation when local branch setup has
+already passed. Report skipped or failed metadata writes in the final response.
 
-If issue selection, token preflight, branch preparation, or freshness verification fails, stop before
-editing files and report a precise `BLOCKED_*` result.
-
-## Approval-Free Shell Contract
-
-Unattended job bodies must not depend on runtime approval prompts. Anything that would require
-interactive approval must be converted into setup/preflight work or reported as blocked.
-
-Allowed after token and branch-preparer preflight succeeds:
-
-- `git fetch origin main`;
-- `git switch -c codex/<issue-slug> origin/main`;
-- `git add`;
-- `git commit`;
-- `git push`;
-- `gh api`;
-- `gh pr create`;
-- `gh pr edit`;
-- `gh pr comment`;
-- `gh pr merge` for `green-pr-merger`;
-- `corepack pnpm@10.12.1 run ...` gates when `COREPACK_HOME` is setup-managed.
-
-Blocked inside unattended job bodies:
-
-- `gh auth login`;
-- `gh auth status`;
-- package install or cache bootstrap unless setup explicitly owns it;
-- repeated approval retries;
-- continuing mutable work from detached HEAD;
-- implementing multiple issues in one run;
-- merging from non-merger roles.
+If issue selection, token preflight, branch preparation, network egress, or freshness verification
+fails, stop before editing files and report a precise `BLOCKED_*` result.
 
 ## Gate Profiles
 
@@ -152,19 +193,3 @@ Use touched-surface gates during implementation and full release gates for PR re
 touched-surface gates always include protected checks. Gate profiles may only add coverage; they
 must not weaken `QUALITY_BAR.md`, release thresholds, protected decisions, or required
 release-candidate gates.
-
-## Required Fail-Fast Outcomes
-
-An unattended automation must stop before implementation when it sees any of these states:
-
-- no open PRs for `green-pr-merger`;
-- missing `GH_TOKEN`/`GITHUB_TOKEN` access for a role that uses GitHub;
-- `gh api user` or `gh api repos/Hangi-n42/Growme_2026` fails;
-- missing fetched `origin/main`;
-- dirty worktree before mutable work;
-- branch-preparer cannot create a local branch, empty commit, or requested remote push/delete probe;
-- detached HEAD for `implementation-worker` or `pr-updater`;
-- current branch is not prefixed with `codex/` for mutable implementation or PR update work;
-- stale branch that does not include fetched `origin/main`;
-- approval-required command in the planned job body;
-- unknown changed surface that cannot be mapped to a narrow gate profile.

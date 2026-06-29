@@ -19,3 +19,4 @@ Codex App Automations must follow the repository-wide Korean user-facing communi
 - Automation status updates, completion summaries, GitHub comments, and PR messages are user-facing and must be written in Korean.
 - Keep command output references, package names, file paths, schema keys, branch names, and API names in English so they remain searchable and executable.
 - When creating follow-up issues, write the issue body in Korean and preserve exact VS IDs, file paths, commands, test names, and technical terms.
+- External runner automation reports and GitHub Actions summaries are user-facing. Write their summaries, PR comments, issue comments, release notes, and follow-up issue bodies in Korean while preserving commands, labels, file paths, branch names, and VS IDs in English.
