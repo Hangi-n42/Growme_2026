@@ -64,16 +64,19 @@ runCheck("malformed content fixtures fail with actionable messages", () => {
 
 async function loadContentSchemaPackage() {
   const distIndexPath = join(repoRoot, "packages", "content-schema", "dist", "index.js");
+  const sourceIndexPath = join(repoRoot, "packages", "content-schema", "src", "index.ts");
   const tscPath = join(repoRoot, "node_modules", "typescript", "bin", "tsc");
-  if (existsSync(tscPath)) {
+  const forceSourceFallback = process.env.CONTENT_SMOKE_FORCE_SOURCE === "1";
+
+  if (!forceSourceFallback && existsSync(tscPath)) {
     buildContentSchemaPackage();
   }
 
-  if (!existsSync(distIndexPath)) {
-    throw new Error("packages/content-schema/dist/index.js was not produced.");
+  if (!forceSourceFallback && existsSync(distIndexPath)) {
+    return import(`${pathToFileURL(distIndexPath).href}?content-smoke=${Date.now()}`);
   }
 
-  return import(`${pathToFileURL(distIndexPath).href}?content-smoke=${Date.now()}`);
+  return import(`${pathToFileURL(sourceIndexPath).href}?content-smoke-source=${Date.now()}`);
 }
 
 function buildContentSchemaPackage() {
