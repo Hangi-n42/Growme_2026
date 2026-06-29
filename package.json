@@ -25,6 +25,9 @@
     "check:automation-preflight": "node tools/scripts/automation-preflight.mjs",
     "check:automation-gate-plan": "node tools/scripts/automation-gate-plan.mjs",
     "check:github-token": "node tools/scripts/github-token-preflight.mjs",
+    "check:external-runner-preflight": "node tools/scripts/external-runner-preflight.mjs",
+    "automation:green-pr-merger": "node tools/automation/green-pr-merger.mjs",
+    "automation:green-pr-merger:dry-run": "node tools/automation/green-pr-merger.mjs --dry-run",
     "check:no-test-skip": "node tools/scripts/no-test-skip.mjs",
     "check:no-quality-threshold-lowering": "node tools/scripts/no-quality-threshold-lowering.mjs"
   },

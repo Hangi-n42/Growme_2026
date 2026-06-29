@@ -4,31 +4,34 @@ const contractPath = "docs/automation/unattended-pipeline.md";
 
 const requiredContractText = [
   "green-pr-merger",
+  "dependency-triage",
+  "review-feedback-follow-up",
+  "release-candidate-evaluator",
   "issue-worker",
   "branch-preparer",
   "workspace-verifier",
   "implementation-worker",
   "pr-updater",
+  "External token-backed runner",
+  "Codex App unattended job bodies may block shell network/socket operations",
+  "BLOCKED_NETWORK_EGRESS",
+  "BLOCKED_APPROVAL_REQUIRED",
   "GITHUB_TOKEN",
   "GH_TOKEN",
+  "GROWME_AUTOMATION_TOKEN",
   "growme_gh_token.txt",
   "GH_TOKEN_PRESENT",
   "gh api user",
   "gh api repos/Hangi-n42/Growme_2026",
   "github-token-preflight.mjs",
+  "external-runner-preflight.mjs",
   "--probe-remote-push",
-  "Default Implementation Path",
-  "git fetch origin main",
-  "git switch -c codex/<issue-slug> origin/main",
-  "git add",
-  "git commit",
-  "git push",
-  "gh pr create",
-  "gh pr merge",
+  "External Runner Path",
+  "Codex App Path",
   "Issue Metadata Policy",
   "Pre-implementation issue label/comment writes are not required gates",
-  "Approval-Free Shell Contract",
-  "continuing mutable work from detached HEAD",
+  "approval-free network egress",
+  "connector publication",
   "named local branch with prefix `codex/`",
   "temporary `codex/__automation_preflight_probe_*` branch",
   "Gate Profiles",
@@ -36,14 +39,17 @@ const requiredContractText = [
   "node tools/scripts/automation-preflight.mjs",
   "node tools/scripts/automation-gate-plan.mjs",
   "node tools/scripts/github-token-preflight.mjs",
-  "COREPACK_HOME"
+  "node tools/scripts/external-runner-preflight.mjs"
 ];
 
 const requiredScripts = [
   "check:automation-contract",
   "check:automation-preflight",
   "check:automation-gate-plan",
-  "check:github-token"
+  "check:github-token",
+  "check:external-runner-preflight",
+  "automation:green-pr-merger",
+  "automation:green-pr-merger:dry-run"
 ];
 
 runCheck("unattended automation contract documents fail-fast rules", () => {
@@ -74,14 +80,20 @@ runCheck("automation contract is wired into quality policy", () => {
   for (const requiredText of [
     "automation_pipeline_gates:",
     "green_pr_merger_scope: merge_only",
+    "github_remote_operations_runner: external_token_backed_required",
+    "codex_app_remote_network_operations: blocked_or_manual_fallback",
     "github_token_preflight: gh_api_required",
+    "external_runner_preflight: required",
     "branch_preparer_git_write_probe: required",
     "token_backed_git_publication: required",
     "named_codex_branch_for_mutable_work: required",
     "detached_head_mutable_work: forbidden",
     "workspace_verifier_scope: local_ref_verification_only",
     "pre_implementation_github_writes: allowed_after_branch_setup",
-    "partial_write_policy: report_metadata_failures_without_blocking"
+    "partial_write_policy: report_metadata_failures_without_blocking",
+    "blocked_network_egress_outcome: required",
+    "connector_publication_default: forbidden",
+    "connector_remote_fallback: explicit_manual_only"
   ]) {
     if (!gates.includes(requiredText)) {
       throw new Error(`quality-gates.yml is missing ${requiredText}`);

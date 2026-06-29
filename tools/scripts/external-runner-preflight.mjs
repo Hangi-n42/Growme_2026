@@ -11,11 +11,11 @@ runCheck("GH_TOKEN_PRESENT", () => {
 });
 
 if (hasToken) {
-  runCheck("gh api user succeeds with token", () => {
+  runCheck("external runner can reach gh api user", () => {
     gh(["api", "user", "--jq", ".login"]);
   });
 
-  runCheck("gh api repository succeeds with token", () => {
+  runCheck("external runner can reach repository API", () => {
     gh(["api", `repos/${repository}`, "--jq", ".full_name"]);
   });
 }

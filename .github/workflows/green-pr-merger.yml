@@ -1,0 +1,45 @@
+name: green-pr-merger
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run candidate checks without merging, deleting branches, or creating issues"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+  statuses: read
+
+jobs:
+  green-pr-merger:
+    name: Green PR Merger
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GROWME_AUTOMATION_TOKEN || github.token }}
+      GITHUB_TOKEN: ${{ secrets.GROWME_AUTOMATION_TOKEN || github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: External runner preflight
+        run: node tools/scripts/external-runner-preflight.mjs
+
+      - name: Run green PR merger
+        shell: bash
+        run: |
+          if [ "${{ inputs.dry_run }}" = "false" ]; then
+            node tools/automation/green-pr-merger.mjs --merge
+          else
+            node tools/automation/green-pr-merger.mjs --dry-run
+          fi
