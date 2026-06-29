@@ -16,6 +16,7 @@ const role = args.role ?? process.env.AUTOMATION_ROLE ?? "implementation-worker"
 const githubWriteMode = args["github-write"] ?? defaultGitHubWriteMode(role);
 const allowDirty = Boolean(args["allow-dirty"]);
 const allowDetached = Boolean(args["allow-detached"]);
+const readOnlyDetached = Boolean(args["read-only-detached"]);
 const skipBranchProbe = Boolean(args["skip-branch-probe"]);
 const probeRemotePush = Boolean(args["probe-remote-push"]);
 
@@ -36,14 +37,12 @@ runCheck("GitHub write access is non-interactive when required", () => {
 
   if (!hasNonInteractiveGitHubAccess()) {
     throw new Error(
-      "Missing non-interactive GitHub access. Set GITHUB_TOKEN, GH_TOKEN, or CODEX_GITHUB_CONNECTOR=enabled."
+      "Missing non-interactive GitHub access. Set GH_TOKEN or GITHUB_TOKEN."
     );
   }
 
-  if (hasTokenGitHubAccess()) {
-    gh(["api", "user", "--jq", ".login"]);
-    gh(["api", "repos/Hangi-n42/Growme_2026", "--jq", ".full_name"]);
-  }
+  gh(["api", "user", "--jq", ".login"]);
+  gh(["api", "repos/Hangi-n42/Growme_2026", "--jq", ".full_name"]);
 });
 
 runCheck("worktree state is valid for automation role", () => {
@@ -87,24 +86,24 @@ runCheck("worktree state is valid for automation role", () => {
   }
 
   if (!branch) {
-    if (!allowDetached) {
-      throw new Error("Detached HEAD requires --allow-detached connector-publish mode for implementation-worker and pr-updater.");
+    if (allowDetached && readOnlyDetached) {
+      const detachedAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], { allowFailure: true });
+      if (!detachedAncestor.ok) {
+        throw new Error("Detached HEAD does not include fetched origin/main.");
+      }
+
+      return;
     }
 
-    const detachedAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], { allowFailure: true });
-    if (!detachedAncestor.ok) {
-      throw new Error("Detached HEAD does not include setup-fetched origin/main.");
-    }
-
-    return;
+    throw new Error("Detached HEAD is not valid for unattended mutable work. Create and switch to a codex/ branch first.");
   }
 
   if (!branch.startsWith("codex/")) {
-    if (allowDetached && ["main", "master"].includes(branch)) {
-      const connectorWorkspaceAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], {
+    if (allowDetached && readOnlyDetached && ["main", "master"].includes(branch)) {
+      const readOnlyAncestor = git(["merge-base", "--is-ancestor", "origin/main", "HEAD"], {
         allowFailure: true
       });
-      if (!connectorWorkspaceAncestor.ok) {
+      if (!readOnlyAncestor.ok) {
         throw new Error(`${branch} workspace does not include setup-fetched origin/main.`);
       }
 
@@ -151,16 +150,13 @@ function parseArgs(argv) {
 }
 
 function defaultGitHubWriteMode(selectedRole) {
-  return ["green-pr-merger", "issue-worker", "branch-preparer", "pr-updater"].includes(selectedRole)
+  return ["green-pr-merger", "issue-worker", "branch-preparer", "implementation-worker", "pr-updater"].includes(selectedRole)
     ? "required"
     : "skip";
 }
 
 function hasNonInteractiveGitHubAccess() {
-  return Boolean(
-    hasTokenGitHubAccess() ||
-      /^enabled|true|1$/iu.test(process.env.CODEX_GITHUB_CONNECTOR ?? "")
-  );
+  return hasTokenGitHubAccess();
 }
 
 function hasTokenGitHubAccess() {

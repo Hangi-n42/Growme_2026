@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { runCheck } from "./lib/repo.mjs";
 
 const allowDetached = process.argv.slice(2).includes("--allow-detached");
+const readOnlyDetached = process.argv.slice(2).includes("--read-only-detached");
 
 function git(args) {
   const result = spawnSync("git", args, {
@@ -20,14 +21,14 @@ runCheck("current branch is compatible with freshness mode", () => {
   const branch = git(["branch", "--show-current"]);
 
   if (!branch.ok || branch.stdout.length === 0) {
-    if (allowDetached) {
+    if (allowDetached && readOnlyDetached) {
       return;
     }
 
-    throw new Error("HEAD must be on a named branch before starting issue work unless --allow-detached is used.");
+    throw new Error("HEAD must be on a named codex/ branch before unattended mutable work starts.");
   }
 
-  if (allowDetached && ["main", "master"].includes(branch.stdout)) {
+  if (allowDetached && readOnlyDetached && ["main", "master"].includes(branch.stdout)) {
     return;
   }
 
