@@ -436,6 +436,10 @@ function validateItems(
       readBoolean(vendor, "sellable", `item ${id}.vendor.sellable`, context);
     }
 
+    if (item["progressionCritical"] !== undefined) {
+      readBoolean(item, "progressionCritical", `item ${id}.progressionCritical`, context);
+    }
+
     if (item["progressionCritical"] === true) {
       const fallbackSourceIds = readStringArray(
         item,
@@ -1051,8 +1055,10 @@ function validateContractObjective(
     validateEnum(type, CONTRACT_OBJECTIVE_TYPES, `${path}.type`, context);
   }
 
+  let itemId: string | undefined;
   if (type === "fetchItem" || type === "deliverItem" || type === "growCrop" || type === "gatherZone") {
-    validateReference(readString(value, "itemId", `${path}.itemId`, context), collections.items, `${path}.itemId`, context);
+    itemId = readString(value, "itemId", `${path}.itemId`, context);
+    validateReference(itemId, collections.items, `${path}.itemId`, context);
     readIntegerInRange(value, "quantity", `${path}.quantity`, 1, 999, context);
   }
 
@@ -1076,8 +1082,53 @@ function validateContractObjective(
   }
 
   if (type === "gatherZone") {
-    validateReference(readString(value, "zoneId", `${path}.zoneId`, context), collections.zones, `${path}.zoneId`, context);
+    const zoneId = readString(value, "zoneId", `${path}.zoneId`, context);
+    validateReference(zoneId, collections.zones, `${path}.zoneId`, context);
+
+    if (zoneId !== undefined && itemId !== undefined) {
+      validateGatherZoneObjectiveReward(zoneId, itemId, path, collections, context);
+    }
   }
+}
+
+function validateGatherZoneObjectiveReward(
+  zoneId: string,
+  itemId: string,
+  path: string,
+  collections: ManifestCollections,
+  context: ValidationContext
+): void {
+  const zone = collections.zones.get(zoneId);
+  if (zone === undefined) {
+    return;
+  }
+
+  const rewardItemIds = collectZoneRewardItemIds(zone);
+  if (!rewardItemIds.has(itemId)) {
+    context.errors.push(`${path}.itemId must be available from zone ${zoneId} rewards: ${itemId}.`);
+  }
+}
+
+function collectZoneRewardItemIds(zone: ContentRecord): Set<string> {
+  const rewardItemIds = new Set<string>();
+  const actions = zone["actions"];
+  if (!Array.isArray(actions)) {
+    return rewardItemIds;
+  }
+
+  for (const action of actions) {
+    if (!isRecord(action) || !Array.isArray(action["rewards"])) {
+      continue;
+    }
+
+    for (const reward of action["rewards"]) {
+      if (isRecord(reward) && typeof reward["itemId"] === "string") {
+        rewardItemIds.add(reward["itemId"]);
+      }
+    }
+  }
+
+  return rewardItemIds;
 }
 
 function validateContractReward(

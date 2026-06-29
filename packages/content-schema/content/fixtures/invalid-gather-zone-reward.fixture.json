@@ -1,0 +1,7 @@
+{
+  "description": "Gather contracts must request items available from the selected zone rewards.",
+  "patches": [
+    { "op": "replace", "path": ["contracts", 8, "objective", "itemId"], "value": "fieldstone" }
+  ],
+  "expectedErrors": ["contract rain_sample.objective.itemId must be available from zone meadow_edge rewards: fieldstone"]
+}

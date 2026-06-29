@@ -1,0 +1,7 @@
+{
+  "description": "progressionCritical must be a boolean when present.",
+  "patches": [
+    { "op": "replace", "path": ["items", 0, "progressionCritical"], "value": "yes" }
+  ],
+  "expectedErrors": ["item turnip_seed.progressionCritical must be a boolean"]
+}
