@@ -27,10 +27,11 @@ automation_pipeline_gates:
   github_auth_mode: non_interactive_required
   github_token_preflight: gh_api_required
   branch_preparer_git_write_probe: required
-  pre_implementation_github_writes: forbidden
-  detached_head_connector_implementation: allowed_with_preflight
-  git_metadata_writes: forbidden_in_unattended_job_body
-  partial_write_policy: rollback_or_blocked
+  token_backed_git_publication: required
+  named_codex_branch_for_mutable_work: required
+  detached_head_mutable_work: forbidden
+  pre_implementation_github_writes: allowed_after_branch_setup
+  partial_write_policy: report_metadata_failures_without_blocking
   approval_required_commands: forbidden_in_unattended_job_body
   gate_profile_policy: touched_surface_then_full_release
 

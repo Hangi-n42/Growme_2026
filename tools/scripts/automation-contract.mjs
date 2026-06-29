@@ -17,23 +17,26 @@ const requiredContractText = [
   "gh api repos/Hangi-n42/Growme_2026",
   "github-token-preflight.mjs",
   "--probe-remote-push",
-  "CODEX_GITHUB_CONNECTOR=enabled",
-  "Detached HEAD",
-  "Pre-Implementation Write Policy",
-  "pre-implementation writes are forbidden",
+  "Default Implementation Path",
+  "git fetch origin main",
+  "git switch -c codex/<issue-slug> origin/main",
+  "git add",
+  "git commit",
+  "git push",
+  "gh pr create",
+  "gh pr merge",
+  "Issue Metadata Policy",
+  "Pre-implementation issue label/comment writes are not required gates",
   "Approval-Free Shell Contract",
-  "shell `git fetch`, `git pull`, or `git push`",
-  "Git metadata writes",
-  "--allow-detached",
+  "continuing mutable work from detached HEAD",
+  "named local branch with prefix `codex/`",
   "temporary `codex/__automation_preflight_probe_*` branch",
-  "Connector Publication",
-  "BLOCKED_CONNECTOR_PUBLISH_UNAVAILABLE",
   "Gate Profiles",
   "node tools/scripts/automation-contract.mjs",
   "node tools/scripts/automation-preflight.mjs",
   "node tools/scripts/automation-gate-plan.mjs",
   "node tools/scripts/github-token-preflight.mjs",
-  "bare `corepack pnpm ...`"
+  "COREPACK_HOME"
 ];
 
 const requiredScripts = [
@@ -73,11 +76,12 @@ runCheck("automation contract is wired into quality policy", () => {
     "green_pr_merger_scope: merge_only",
     "github_token_preflight: gh_api_required",
     "branch_preparer_git_write_probe: required",
+    "token_backed_git_publication: required",
+    "named_codex_branch_for_mutable_work: required",
+    "detached_head_mutable_work: forbidden",
     "workspace_verifier_scope: local_ref_verification_only",
-    "pre_implementation_github_writes: forbidden",
-    "partial_write_policy: rollback_or_blocked",
-    "detached_head_connector_implementation: allowed_with_preflight",
-    "git_metadata_writes: forbidden_in_unattended_job_body"
+    "pre_implementation_github_writes: allowed_after_branch_setup",
+    "partial_write_policy: report_metadata_failures_without_blocking"
   ]) {
     if (!gates.includes(requiredText)) {
       throw new Error(`quality-gates.yml is missing ${requiredText}`);
