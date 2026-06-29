@@ -73,7 +73,7 @@ if (existsSync(vitestPath)) {
   });
 
   runCheck("dependency triage parses and unlocks closed dependencies", () => {
-    const parsed = parseDependencyReferences("Dependencies:\n- #6\n- #9");
+    const parsed = parseDependencyReferences("Dependencies:\n\n- #6\n- #9");
     const plan = createDependencyTriagePlan({
       issues: [
         noInstallIssue({ number: 6, title: "VS-004 Content foundation", state: "closed" }),
@@ -111,6 +111,26 @@ if (existsSync(vitestPath)) {
 
     if (plan.newlyCodexReadyPlanned.length > 0 || plan.stillBlockedIssues[0]?.reason !== "open dependencies remain") {
       throw new Error("Dependency triage must not unlock issues with open dependencies.");
+    }
+  });
+
+  runCheck("dependency triage keeps missing dependency sections blocked", () => {
+    const explicitNone = parseDependencyReferences("Blocked by: 없음");
+    const plan = createDependencyTriagePlan({
+      issues: [
+        noInstallIssue({
+          number: 42,
+          title: "VS-040 Playwright first day test",
+          body: "Acceptance Criteria:\n- Build the test",
+          labels: ["codex-blocked"]
+        })
+      ],
+      openPrs: [],
+      now: new Date("2026-06-29T00:00:00.000Z")
+    });
+
+    if (!explicitNone.explicitNone || plan.stillBlockedIssues[0]?.reason !== "missing dependency section") {
+      throw new Error("Dependency triage must not unlock codex-blocked issues without a dependency section.");
     }
   });
 

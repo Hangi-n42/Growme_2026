@@ -86,7 +86,21 @@ function fetchReferencedDependencyIssues(issues) {
     }
   }
 
-  return [...dependencyNumbers].map((number) => ghJson(["api", `repos/${repository}/issues/${number}`]));
+  return [...dependencyNumbers].map(fetchDependencyIssue).filter(Boolean);
+}
+
+function fetchDependencyIssue(number) {
+  const result = gh(["api", `repos/${repository}/issues/${number}`], { allowFailure: true });
+
+  if (result.ok) {
+    return JSON.parse(result.stdout || "null");
+  }
+
+  if (/404|not found/iu.test(result.stderr)) {
+    return null;
+  }
+
+  throw new Error(`BLOCKED_GITHUB_READ: Failed to fetch dependency issue #${number}: ${result.stderr}`);
 }
 
 function listOpenPrs() {
@@ -157,12 +171,22 @@ export function createDependencyTriagePlan({
     const inspection = {
       ...issueSummary(issue),
       dependencies: dependencyStates,
+      hasDependencySection: parsedDependencies.hasDependencySection,
       ambiguousDependencies: parsedDependencies.ambiguous,
       explicitNoDependencies: parsedDependencies.explicitNone,
       openDependencies
     };
 
     blockedIssuesInspected.push(inspection);
+
+    if (!parsedDependencies.hasDependencySection) {
+      stillBlockedIssues.push({
+        ...issueSummary(issue),
+        reason: "missing dependency section",
+        openDependencies
+      });
+      continue;
+    }
 
     if (parsedDependencies.ambiguous) {
       stillBlockedIssues.push({
@@ -215,18 +239,24 @@ export function createDependencyTriagePlan({
   };
 }
 
-function applyDependencyTriagePlan(plan) {
+export function applyDependencyTriagePlan(
+  plan,
+  operations = {
+    addIssueLabels,
+    removeIssueLabel
+  }
+) {
   const labelsRemoved = [];
   const newlyCodexReadyApplied = [];
 
   for (const item of plan.labelsToRemove) {
-    removeIssueLabel(item.number, item.label);
+    operations.removeIssueLabel(item.number, item.label);
     labelsRemoved.push(item);
   }
 
   for (const item of plan.newlyCodexReadyPlanned) {
-    removeIssueLabel(item.number, "codex-blocked");
-    addIssueLabels(item.number, ["codex-ready"]);
+    operations.addIssueLabels(item.number, ["codex-ready"]);
+    operations.removeIssueLabel(item.number, "codex-blocked");
     newlyCodexReadyApplied.push(item);
   }
 
@@ -293,7 +323,11 @@ export function parseDependencyReferences(body) {
       continue;
     }
 
-    if (isHeading || trimmed === "") {
+    if (trimmed === "") {
+      continue;
+    }
+
+    if (isHeading) {
       captureSection = false;
       continue;
     }
@@ -312,7 +346,8 @@ export function parseDependencyReferences(body) {
   return {
     issueNumbers: [...issueNumbers].sort((left, right) => left - right),
     ambiguous: sawDependencySection && issueNumbers.size === 0 && !explicitNone && capturedDependencyLineWithoutReference,
-    explicitNone
+    explicitNone,
+    hasDependencySection: sawDependencySection
   };
 }
 
@@ -327,7 +362,7 @@ function extractIssueNumbers(text) {
 }
 
 function isExplicitNoDependencyLine(line) {
-  return /\b(no dependencies|none|n\/a|not applicable|없음)\b/iu.test(line);
+  return /\b(no dependencies|none|n\/a|not applicable)\b/iu.test(line) || /없음/u.test(line);
 }
 
 function findRecommendedNextIssue(milestoneIssues, newlyReadyIssues) {
