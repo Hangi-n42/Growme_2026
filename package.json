@@ -28,6 +28,8 @@
     "check:external-runner-preflight": "node tools/scripts/external-runner-preflight.mjs",
     "automation:green-pr-merger": "node tools/automation/green-pr-merger.mjs",
     "automation:green-pr-merger:dry-run": "node tools/automation/green-pr-merger.mjs --dry-run",
+    "automation:dependency-triage": "node tools/automation/dependency-triage.mjs",
+    "automation:dependency-triage:dry-run": "node tools/automation/dependency-triage.mjs --dry-run",
     "check:no-test-skip": "node tools/scripts/no-test-skip.mjs",
     "check:no-quality-threshold-lowering": "node tools/scripts/no-quality-threshold-lowering.mjs"
   },
